@@ -107,6 +107,18 @@
             color: var(--text-secondary);
             font-size: 0.85rem;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .qr-code {
+            width: 300px;
+            height: auto;
+            border-radius: 8px;
+            background-color: white;
+            padding: 6px;
         }
     </style>
 </head>
@@ -139,6 +151,7 @@
     </main>
 
     <footer>
+        <img src="qrcode_athletics.png" alt="QR Code to Athletics Webpage" class="qr-code">
         <p>&copy; Wodonga Athletics Club</p>
     </footer>
 
