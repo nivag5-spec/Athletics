@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAC Athletics Applications</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --card-hover: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            letter-spacing: -0.025em;
+        }
+
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 350px));
+            gap: 24px;
+            width: 100%;
+            max-width: 800px;
+            justify-content: center;
+        }
+
+        .app-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .app-card:hover {
+            transform: translateY(-4px);
+            background-color: var(--card-hover);
+        }
+
+        .app-card h2 {
+            font-size: 1.35rem;
+            margin-top: 0;
+            margin-bottom: 12px;
+        }
+
+        .app-card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 24px;
+            flex-grow: 1;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--accent);
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        footer {
+            margin-top: auto;
+            padding-top: 40px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Wodonga Athletics Club</h1>
+        <p class="subtitle">Track & Field Utilities Dashboard</p>
+    </header>
+
+    <main class="app-grid">
+        <!-- Lap Counter Card -->
+        <div class="app-card">
+            <div>
+                <h2>Track Lap Counter</h2>
+                <p>Multi-lane live race lap tracking, bell lap prompts, runner split calculations, and real-time pace evaluation.</p>
+            </div>
+            <a href="Lap Counter 086.html" class="btn">Launch Lap Counter</a>
+        </div>
+
+        <!-- Stopwatch Card -->
+        <div class="app-card">
+            <div>
+                <h2>Seiko Stopwatch Timer</h2>
+                <p>Trackside timing logger designed for recording race intervals, multi-runner finishes, and timing drills.</p>
+            </div>
+            <!-- Update the href below to match your actual stopwatch HTML filename -->
+            <a href="Stopwatch.html" class="btn">Launch Stopwatch</a>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; Wodonga Athletics Club</p>
+    </footer>
+
+</body>
+</html>

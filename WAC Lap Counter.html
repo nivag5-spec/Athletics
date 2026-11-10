@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAC Track Lap Counter</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --card-border: #334155;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --accent: #10b981;
+            --accent-hover: #059669;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            min-height: 100vh;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        body {
+            padding: 2px 4px;
+            max-width: 400px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: calc(1rem + 4pt);
+            box-sizing: border-box;
+        }
+
+        /* Top Header Row holding Left and Right containers */
+        .top-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            gap: 4px;
+            width: 100%;
+            flex-shrink: 0;
+        }
+
+        /* Header Containers Standardization */
+        .header-box, .event-log-container {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 5px;
+            padding: 3px 6px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            box-sizing: border-box;
+        }
+
+        .header-box {
+            display: flex;
+            align-items: center;
+        }
+
+        /* Left Header Box: Title & Setup Bar */
+        .header-left {
+            flex: 1;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        h1 {
+            font-size: calc(0.8rem + 4pt);
+            font-weight: 800;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Pre-race Distance Setup Bar */
+        .setup-bar {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .distance-select {
+            width: auto;
+            background: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            color: white;
+            font-size: calc(0.55rem + 4pt);
+            font-weight: 600;
+            padding: 2px 4px;
+            cursor: pointer;
+        }
+
+        .distance-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Right Header Box: Time & Start/Stop/Reset Actions */
+        .header-right {
+            justify-content: flex-end;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .master-clock-box {
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 4px;
+            padding: 2px 4px;
+            text-align: center;
+        }
+
+        .master-clock-label {
+            color: var(--text-muted);
+            font-size: calc(0.35rem + 2pt);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .master-clock-time {
+            font-size: calc(1.05rem + 4pt);
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .master-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            width: auto;
+        }
+
+        .btn {
+            border: none;
+            padding: 8px 6px;
+            border-radius: 4px;
+            font-size: calc(0.55rem + 4pt);
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            text-align: center;
+            width: auto;
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .btn-start { background-color: var(--primary); color: white; }
+        .btn-start:hover { background-color: var(--primary-hover); }
+
+        .btn-stop { background-color: var(--warning); color: #0f172a; display: none; }
+        .btn-stop:hover { background-color: #d97706; }
+
+        .btn-reset { background-color: var(--danger); color: white; display: none; }
+        .btn-reset:hover { background-color: #dc2626; }
+
+        /* Athlete Grid List (Strictly 2 across, each card exactly 170px wide) */
+        .athletes-list {
+            display: grid;
+            grid-template-columns: repeat(2, 170px);
+            justify-content: center;
+            grid-template-rows: repeat(3, auto);
+            gap: 3px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .athlete-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 5px;
+            padding: 2px 5px;
+            display: flex;
+            flex-direction: column;
+            width: 170px;
+            box-sizing: border-box;
+            gap: 2px;
+        }
+
+        .card-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .athlete-name {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid #475569;
+            color: white;
+            font-size: calc(0.65rem + 4pt);
+            font-weight: 700;
+            padding: 1px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .athlete-name:focus {
+            outline: none;
+            border-bottom-color: var(--primary);
+        }
+
+        /* Lap Button container wrapper for button + track fill bar underneath */
+        .lap-btn-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            width: 100%;
+        }
+
+        /* Lap Button directly below runner name row */
+        .lap-btn {
+            background-color: #334155;
+            color: white;
+            border: none;
+            padding: 5px 2px;
+            border-radius: 3px;
+            font-size: calc(0.55rem + 4pt);
+            font-weight: 800;
+            cursor: pointer;
+            text-transform: uppercase;
+            width: 100%;
+            max-width: 100%;
+            text-align: center;
+            line-height: 1.2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
+            transition: background 0.1s;
+        }
+
+        .lap-btn:active { transform: scale(0.98); }
+        .lap-btn.active-runner { background-color: var(--accent); color: #064e3b; }
+        .lap-btn:disabled { background-color: #1e293b; color: var(--text-muted); border: 1px dashed #334155; cursor: not-allowed; }
+
+        /* Track Lane Progress Bar underneath the Lap Button */
+        .track-bar-container {
+            width: 100%;
+            height: 4px;
+            background-color: #0f172a;
+            border-radius: 2px;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .track-bar-fill {
+            height: 100%;
+            width: 0%;
+            background-color: var(--accent);
+            transition: width 0.1s linear, background-color 0.1s linear;
+        }
+
+        /* Card Stats Grid */
+        .card-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2px;
+            background: rgba(15, 23, 42, 0.4);
+            padding: 2px 3px;
+            border-radius: 3px;
+            font-size: calc(0.45rem + 4pt);
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0px;
+        }
+
+        .stat-label {
+            font-size: calc(0.35rem + 2pt);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            color: var(--text-main);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            font-size: calc(0.5rem + 4pt);
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            font-size: calc(0.45rem + 2pt);
+            color: var(--text-muted);
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 1px;
+        }
+
+        .sub-links {
+            display: flex;
+            gap: 6px;
+        }
+
+        .sub-link-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: calc(0.45rem + 2pt);
+        }
+        .sub-link-btn:hover { color: white; }
+        .sub-link-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        /* Running Event Log Panel */
+        .event-log-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex-shrink: 0;
+            width: 100%;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .log-title {
+            font-size: calc(0.55rem + 4pt);
+            font-weight: 700;
+            color: var(--text-main);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-export {
+            background-color: #334155;
+            color: white;
+            border: none;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: calc(0.5rem + 4pt);
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        .btn-export:hover { background-color: #475569; }
+        .btn-export:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .log-scroll-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: 3px;
+            height: 78px; /* Exactly 3 lines high */
+            overflow-y: auto;
+            padding: 2px 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: calc(0.5rem + 4pt);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .log-entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 1px 3px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 2px;
+            color: var(--text-muted);
+        }
+
+        .log-entry.lap { border-left: 2px solid var(--accent); color: var(--text-main); }
+        .log-entry.start { border-left: 2px solid var(--primary); color: var(--text-main); }
+        .log-entry.undo { border-left: 2px solid var(--warning); }
+        .log-entry.redo { border-left: 2px solid var(--primary); }
+
+        .log-empty {
+            color: var(--text-muted);
+            text-align: center;
+            padding: 8px 0;
+            font-style: italic;
+            font-size: calc(0.5rem + 4pt);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Header Row with Two Distinct Containers -->
+    <div class="top-header-row">
+        <!-- Container 1: App Name & Setup Bar (Left) -->
+        <div class="header-box header-left">
+            <h1>WAC Lap Counter</h1>
+            <div class="setup-bar" id="setup-bar">
+                <select class="distance-select" id="distance-select" onchange="handleSelectChange(this.value)">
+                    <option value="3.75" data-dist="1500">1500m (3.75)</option>
+                    <option value="7.5" data-dist="3000">3k (7.5)</option>
+                    <option value="12.5" data-dist="5000" selected>5k (12.5)</option>
+                    <option value="25" data-dist="10000">10k (25)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Container 2: Race Time & Start Button (Right) -->
+        <div class="header-box header-right">
+            <div class="master-clock-box">
+                <div class="master-clock-label">Race Time</div>
+                <div class="master-clock-time" id="master-timer">00:00:00.0</div>
+            </div>
+
+            <div class="master-actions">
+                <button type="button" class="btn btn-start" id="master-start-btn" onclick="triggerHaptic(); startRace()">START</button>
+                <button type="button" class="btn btn-stop" id="master-stop-btn" onclick="triggerHaptic(); promptStopRace()">STOP</button>
+                <button type="button" class="btn btn-reset" id="master-reset-btn" onclick="triggerHaptic(); resetRace()">RESET</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Athletes List Grid (Strictly 2 across, each card exactly 170px wide) -->
+    <div class="athletes-list" id="athletes-list"></div>
+
+    <!-- Running Event Log -->
+    <div class="event-log-container">
+        <div class="log-header">
+            <span class="log-title">Running Click Log</span>
+            <button type="button" class="btn-export" id="export-btn" onclick="triggerHaptic(); exportLog()" disabled>Export CSV</button>
+        </div>
+        <div class="log-scroll-box" id="log-scroll-box">
+            <div class="log-empty">No click events recorded yet.</div>
+        </div>
+    </div>
+
+    <script>
+        let athletes = [];
+        const maxAthletes = 6;
+        let globalDistance = 12.5; // in laps
+        let raceDistanceMeters = 5000; // default 5k in meters
+        let raceState = 'READY'; // 'READY', 'RUNNING', 'STOPPED'
+        let masterStartTime = null;
+        let masterElapsedTime = 0;
+        let masterInterval = null;
+        let globalEventLog = [];
+
+        const initialNames = ["Runner 1", "Runner 2", "Runner 3", "Runner 4", "Runner 5", "Runner 6"];
+
+        function triggerHaptic() {
+            if (navigator.vibrate) {
+                navigator.vibrate(40); // Subtle 40ms vibration pulse
+            }
+        }
+
+        function saveRaceState() {
+            if (raceState === 'READY') {
+                localStorage.removeItem('wac_race_state');
+                return;
+            }
+            const stateData = {
+                raceState: raceState,
+                masterElapsedTime: masterElapsedTime,
+                globalDistance: globalDistance,
+                raceDistanceMeters: raceDistanceMeters,
+                athletes: athletes,
+                globalEventLog: globalEventLog,
+                savedAt: Date.now()
+            };
+            localStorage.setItem('wac_race_state', JSON.stringify(stateData));
+        }
+
+        function init() {
+            const savedState = localStorage.getItem('wac_race_state');
+            
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    if (parsed.raceState === 'RUNNING') {
+                        raceState = 'RUNNING';
+                        masterElapsedTime = parsed.masterElapsedTime + (Date.now() - parsed.savedAt);
+                        masterStartTime = Date.now() - masterElapsedTime;
+                        
+                        masterInterval = setInterval(() => {
+                            masterElapsedTime = Date.now() - masterStartTime;
+                            document.getElementById('master-timer').textContent = formatTimeWithHours(masterElapsedTime);
+                            athletes.forEach(a => updateCardTrackBar(a.id));
+                        }, 100);
+
+                        document.getElementById('setup-bar').style.opacity = "0.4";
+                        document.getElementById('setup-bar').style.pointerEvents = "none";
+                        document.getElementById('master-start-btn').style.display = 'none';
+                        document.getElementById('master-stop-btn').style.display = 'inline-block';
+                    } else if (parsed.raceState === 'STOPPED') {
+                        raceState = 'STOPPED';
+                        masterElapsedTime = parsed.masterElapsedTime;
+                        document.getElementById('master-timer').textContent = formatTimeWithHours(masterElapsedTime);
+                        document.getElementById('setup-bar').style.opacity = "0.4";
+                        document.getElementById('setup-bar').style.pointerEvents = "none";
+                        document.getElementById('master-start-btn').style.display = 'none';
+                        document.getElementById('master-reset-btn').style.display = 'inline-block';
+                    }
+
+                    globalDistance = parsed.globalDistance;
+                    raceDistanceMeters = parsed.raceDistanceMeters;
+                    athletes = parsed.athletes;
+                    globalEventLog = parsed.globalEventLog;
+
+                    const selectEl = document.getElementById('distance-select');
+                    for (let opt of selectEl.options) {
+                        if (parseFloat(opt.value) === globalDistance) {
+                            opt.selected = true;
+                            break;
+                        }
+                    }
+
+                    renderInitialCards();
+                    renderEventLog();
+                    return;
+                } catch (e) {
+                    console.error("Failed to restore saved race state", e);
+                    localStorage.removeItem('wac_race_state');
+                }
+            }
+
+            for (let i = 0; i < maxAthletes; i++) {
+                athletes.push({
+                    id: i,
+                    name: initialNames[i],
+                    totalLaps: globalDistance,
+                    lapsRemaining: globalDistance,
+                    lapHistory: [],
+                    redoStack: [],
+                    lastLapTimestamp: 0,
+                    lockedNextSplit: "-",
+                    lockedEstFinish: "-",
+                    lockedLastSplit: "-",
+                    lockedPace: "-"
+                });
+            }
+            renderInitialCards();
+            renderEventLog();
+        }
+
+        function renderInitialCards() {
+            const list = document.getElementById('athletes-list');
+            list.innerHTML = athletes.map(a => `
+                <div class="athlete-card" id="card-${a.id}">
+                    <div class="card-row">
+                        <input type="text" class="athlete-name" value="${escapeHtml(a.name)}" 
+                            oninput="updateName(${a.id}, this.value)" placeholder="Runner Name">
+                    </div>
+
+                    <div class="card-row">
+                        <div class="lap-btn-container">
+                            <button type="button" class="lap-btn" id="lap-btn-${a.id}" 
+                                onclick="triggerHaptic(); recordLap(${a.id})" disabled>
+                                <span>THIS CALL</span>
+                                <span>LAP (-1)</span>
+                            </button>
+                            <div class="track-bar-container">
+                                <div class="track-bar-fill" id="track-bar-${a.id}"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Next Split</span>
+                            <span class="stat-value" id="next-split-${a.id}">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Est. Finish</span>
+                            <span class="stat-value" id="est-finish-${a.id}">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Last Split</span>
+                            <span class="stat-value" id="last-split-${a.id}">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Pace</span>
+                            <span class="stat-value" id="pace-${a.id}">-</span>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <div class="sub-links">
+                            <button type="button" class="sub-link-btn" id="undo-btn-${a.id}" onclick="triggerHaptic(); undoLap(${a.id})" disabled>Undo</button>
+                            <button type="button" class="sub-link-btn" id="redo-btn-${a.id}" onclick="triggerHaptic(); redoLap(${a.id})" disabled>Redo</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            athletes.forEach(a => updateCardUI(a.id));
+        }
+
+        function updateName(id, val) {
+            const a = athletes.find(item => item.id === id);
+            if (a) {
+                a.name = val;
+                saveRaceState();
+            }
+        }
+
+        function handleSelectChange(val) {
+            if (raceState !== 'READY') return;
+            const selectEl = document.getElementById('distance-select');
+            const selectedOption = selectEl.options[selectEl.selectedIndex];
+            const distAttr = selectedOption.getAttribute('data-dist');
+            
+            let laps = parseFloat(val);
+            let meters = parseFloat(distAttr);
+            setGlobalDistance(laps, meters);
+        }
+
+        function setGlobalDistance(laps, meters) {
+            if (raceState !== 'READY') return;
+            globalDistance = laps;
+            raceDistanceMeters = meters;
+            
+            athletes.forEach(a => {
+                a.totalLaps = laps;
+                a.lapsRemaining = laps;
+                a.lapHistory = [];
+                a.redoStack = [];
+                a.lastLapTimestamp = 0;
+                a.lockedNextSplit = "-";
+                a.lockedEstFinish = "-";
+                a.lockedLastSplit = "-";
+                a.lockedPace = "-";
+                updateCardUI(a.id);
+            });
+            saveRaceState();
+        }
+
+        function startRace() {
+            raceState = 'RUNNING';
+            masterStartTime = Date.now() - masterElapsedTime;
+
+            const startTimeObj = new Date();
+            const timeOfDayStr = formatTimeOfDay(startTimeObj);
+            const selectEl = document.getElementById('distance-select');
+            const eventName = selectEl.options[selectEl.selectedIndex].text;
+
+            globalEventLog.unshift({
+                type: 'START',
+                timeOfDay: timeOfDayStr,
+                timeStr: formatTimeWithHours(masterElapsedTime),
+                runnerName: 'Race',
+                details: `Race started (${eventName})`
+            });
+
+            document.getElementById('setup-bar').style.opacity = "0.4";
+            document.getElementById('setup-bar').style.pointerEvents = "none";
+
+            document.getElementById('master-start-btn').style.display = 'none';
+            document.getElementById('master-stop-btn').style.display = 'inline-block';
+            document.getElementById('master-reset-btn').style.display = 'none';
+
+            masterInterval = setInterval(() => {
+                masterElapsedTime = Date.now() - masterStartTime;
+                document.getElementById('master-timer').textContent = formatTimeWithHours(masterElapsedTime);
+                
+                athletes.forEach(a => updateCardTrackBar(a.id));
+                saveRaceState();
+            }, 100);
+
+            athletes.forEach(a => {
+                a.lastLapTimestamp = masterElapsedTime;
+                updateCardUI(a.id);
+            });
+            renderEventLog();
+            saveRaceState();
+        }
+
+        function promptStopRace() {
+            if (!confirm("Stop active race?")) return;
+
+            clearInterval(masterInterval);
+            masterInterval = null;
+            raceState = 'STOPPED';
+
+            document.getElementById('master-start-btn').style.display = 'none';
+            document.getElementById('master-stop-btn').style.display = 'none';
+            document.getElementById('master-reset-btn').style.display = 'inline-block';
+
+            athletes.forEach(a => updateCardUI(a.id));
+            saveRaceState();
+        }
+
+        function resetRace() {
+            if (!confirm("Reset active race?")) return;
+
+            localStorage.removeItem('wac_race_state');
+            clearInterval(masterInterval);
+            masterInterval = null;
+            raceState = 'READY';
+            masterElapsedTime = 0;
+            globalEventLog = [];
+
+            document.getElementById('setup-bar').style.opacity = "1";
+            document.getElementById('setup-bar').style.pointerEvents = "auto";
+
+            document.getElementById('master-start-btn').style.display = 'inline-block';
+            document.getElementById('master-stop-btn').style.display = 'none';
+            document.getElementById('master-reset-btn').style.display = 'none';
+
+            athletes.forEach(a => {
+                a.lapsRemaining = a.totalLaps;
+                a.lapHistory = [];
+                a.redoStack = [];
+                a.lastLapTimestamp = 0;
+                a.lockedNextSplit = "-";
+                a.lockedEstFinish = "-";
+                a.lockedLastSplit = "-";
+                a.lockedPace = "-";
+                updateCardUI(a.id);
+            });
+
+            document.getElementById('master-timer').textContent = "00:00:00.0";
+            renderEventLog();
+        }
+
+        function calculateMetricsForAthlete(a) {
+            let currentPaceStr = "-";
+            let avgLapMs = 0;
+            if (a.lapHistory.length > 0) {
+                let totalSplitTimeMs = a.lapHistory.reduce((sum, entry) => sum + entry.rawSplit, 0);
+                let totalLapsCompleted = a.totalLaps - a.lapsRemaining;
+                if (totalLapsCompleted > 0) {
+                    avgLapMs = totalSplitTimeMs / totalLapsCompleted;
+                    let paceMsPerKm = avgLapMs * (1000 / 400);
+                    currentPaceStr = formatPaceMinutesPerKm(paceMsPerKm);
+                }
+            }
+
+            let isFinished = a.lapsRemaining === 0;
+            let estFinishStr = "-";
+            if (isFinished && a.lapHistory.length > 0) {
+                estFinishStr = a.lapHistory[0].total;
+            } else if (a.lapHistory.length > 0 && a.lapsRemaining > 0 && avgLapMs > 0) {
+                let estTotalMs = masterElapsedTime + (avgLapMs * a.lapsRemaining);
+                estFinishStr = formatTimeWithHoursNoTenths(estTotalMs);
+            }
+
+            let nextSplitClockStr = "-";
+            if (a.lapHistory.length > 0 && a.lapsRemaining > 0 && avgLapMs > 0) {
+                let nextSplitTargetMs = masterElapsedTime + (avgLapMs * Math.min(1, a.lapsRemaining));
+                nextSplitClockStr = formatTimeWithHours(nextSplitTargetMs);
+            }
+
+            let lastSplitStr = a.lapHistory.length > 0 ? a.lapHistory[0].split : '-';
+
+            return {
+                nextSplit: nextSplitClockStr,
+                estFinish: estFinishStr,
+                lastSplit: lastSplitStr,
+                pace: currentPaceStr,
+                avgLapMs: avgLapMs
+            };
+        }
+
+        function recordLap(id) {
+            if (raceState !== 'RUNNING') return;
+            const a = athletes.find(item => item.id === id);
+            if (!a || a.lapsRemaining <= 0) return;
+
+            let currentFraction = a.lapsRemaining % 1;
+            let lapAmountCompleted = (currentFraction !== 0) ? currentFraction : 1.0;
+            let isPartLap = currentFraction !== 0;
+
+            let prevTotalTime = a.lapHistory.length > 0 ? a.lapHistory[0].rawTotal : 0;
+            let currentTotalTime = masterElapsedTime;
+            let splitTime = currentTotalTime - prevTotalTime;
+
+            a.lapsRemaining = Math.max(0, a.lapsRemaining - lapAmountCompleted);
+            a.lastLapTimestamp = currentTotalTime;
+
+            const isFinished = a.lapsRemaining === 0;
+            const entryLabel = isPartLap ? `Part (${lapAmountCompleted.toFixed(2)})` : `Lap ${(a.totalLaps - a.lapsRemaining)}`;
+
+            const lapEntry = {
+                label: entryLabel,
+                split: formatSplitTime(splitTime),
+                rawSplit: splitTime,
+                total: formatTimeWithHoursNoTenths(currentTotalTime),
+                rawTotal: currentTotalTime,
+                deducted: lapAmountCompleted
+            };
+
+            a.lapHistory.unshift(lapEntry);
+            a.redoStack = [];
+
+            let metrics = calculateMetricsForAthlete(a);
+            a.lockedNextSplit = metrics.nextSplit;
+            a.lockedEstFinish = metrics.estFinish;
+            a.lockedLastSplit = metrics.lastSplit;
+            a.lockedPace = metrics.pace;
+
+            const eventTimeObj = new Date();
+            globalEventLog.unshift({
+                type: isFinished ? 'FINISH' : 'LAP',
+                timeOfDay: formatTimeOfDay(eventTimeObj),
+                timeStr: formatTimeWithHours(currentTotalTime),
+                runnerName: a.name,
+                details: isFinished ? `Finished race at ${formatTimeWithHoursNoTenths(currentTotalTime)}` : `${entryLabel} recorded (Remaining: ${a.lapsRemaining.toFixed(2)})`
+            });
+
+            updateCardUI(id);
+            renderEventLog();
+            saveRaceState();
+        }
+
+        function undoLap(id) {
+            const a = athletes.find(item => item.id === id);
+            if (!a || a.lapHistory.length === 0 || raceState !== 'RUNNING') return;
+
+            const lastEntry = a.lapHistory.shift();
+            a.lapsRemaining = Math.min(a.totalLaps, a.lapsRemaining + lastEntry.deducted);
+            a.redoStack.unshift(lastEntry);
+
+            a.lastLapTimestamp = a.lapHistory.length > 0 ? a.lapHistory[0].rawTotal : 0;
+
+            let metrics = calculateMetricsForAthlete(a);
+            a.lockedNextSplit = metrics.nextSplit;
+            a.lockedEstFinish = metrics.estFinish;
+            a.lockedLastSplit = metrics.lastSplit;
+            a.lockedPace = metrics.pace;
+            
+            const undoTimeObj = new Date();
+            globalEventLog.unshift({
+                type: 'UNDO',
+                timeOfDay: formatTimeOfDay(undoTimeObj),
+                timeStr: formatTimeWithHours(masterElapsedTime),
+                runnerName: a.name,
+                details: `Undo ${lastEntry.label} (Restored to ${a.lapsRemaining.toFixed(2)})`
+            });
+
+            updateCardUI(id);
+            renderEventLog();
+            saveRaceState();
+        }
+
+        function redoLap(id) {
+            const a = athletes.find(item => item.id === id);
+            if (!a || a.redoStack.length === 0 || raceState !== 'RUNNING') return;
+
+            const nextEntry = a.redoStack.shift();
+            a.lapsRemaining = Math.max(0, a.lapsRemaining - nextEntry.deducted);
+            a.lapHistory.unshift(nextEntry);
+            a.lastLapTimestamp = nextEntry.rawTotal;
+
+            let metrics = calculateMetricsForAthlete(a);
+            a.lockedNextSplit = metrics.nextSplit;
+            a.lockedEstFinish = metrics.estFinish;
+            a.lockedLastSplit = metrics.lastSplit;
+            a.lockedPace = metrics.pace;
+
+            const redoTimeObj = new Date();
+            globalEventLog.unshift({
+                type: 'REDO',
+                timeOfDay: formatTimeOfDay(redoTimeObj),
+                timeStr: formatTimeWithHours(masterElapsedTime),
+                runnerName: a.name,
+                details: `Redo ${nextEntry.label} (Remaining: ${a.lapsRemaining.toFixed(2)})`
+            });
+
+            updateCardUI(id);
+            renderEventLog();
+            saveRaceState();
+        }
+
+        function renderEventLog() {
+            const box = document.getElementById('log-scroll-box');
+            const exportBtn = document.getElementById('export-btn');
+
+            if (globalEventLog.length === 0) {
+                box.innerHTML = `<div class="log-empty">No click events recorded yet.</div>`;
+                exportBtn.setAttribute('disabled', 'true');
+                return;
+            }
+
+            exportBtn.removeAttribute('disabled');
+            box.innerHTML = globalEventLog.map(ev => `
+                <div class="log-entry ${ev.type.toLowerCase()}">
+                    <span><strong>[${ev.timeOfDay}]</strong> (${ev.timeStr}) <strong>${escapeHtml(ev.runnerName)}</strong>: ${escapeHtml(ev.details)}</span>
+                    <span style="opacity: 0.7; font-size: calc(0.45rem + 2pt);">${ev.type}</span>
+                </div>
+            `).join('');
+        }
+
+        function exportLog() {
+            if (globalEventLog.length === 0) return;
+
+            let csv = 'Time of Day,Elapsed Time,Runner Name,Event Type,Details\n';
+            globalEventLog.forEach(ev => {
+                csv += `"${ev.timeOfDay}","${ev.timeStr}","${ev.runnerName.replace(/"/g, '""')}","${ev.type}","${ev.details.replace(/"/g, '""')}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `track_lap_log_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+    
+        function updateCardUI(id) {
+            const a = athletes.find(item => item.id === id);
+            if (!a) return;
+
+            let line1 = "THIS CALL";
+            let line2 = "LAP (-1)";
+            let isFinished = a.lapsRemaining === 0;
+
+            if (isFinished) {
+                line1 = "";
+                line2 = "FINISHED";
+            } else if (Math.abs(a.lapsRemaining - 1) < 0.001) {
+                line2 = '"FINISHING"';
+            } else if (Math.abs(a.lapsRemaining - 2) < 0.001) {
+                line2 = '"BELL"';
+            } else {
+                let currentFraction = a.lapsRemaining % 1;
+                let targetLaps = a.lapsRemaining - (currentFraction !== 0 ? currentFraction : 1);
+                let targetRounded = Math.round(targetLaps);
+                
+                if (targetRounded <= 0 || Math.abs(targetRounded - 0) < 0.001) {
+                    line1 = "";
+                    line2 = "FINISHED";
+                    isFinished = true;
+                } else {
+                    line2 = `"${targetRounded} LAPS TO GO"`;
+                }
+            }
+
+            const lapBtn = document.getElementById(`lap-btn-${id}`);
+            if (line1 === "") {
+                lapBtn.innerHTML = `<span>${line2}</span>`;
+            } else {
+                lapBtn.innerHTML = `<span>${line1}</span><span>${line2}</span>`;
+            }
+
+            if (raceState === 'RUNNING' && !isFinished) {
+                lapBtn.removeAttribute('disabled');
+                lapBtn.classList.add('active-runner');
+            } else {
+                lapBtn.setAttribute('disabled', 'true');
+                lapBtn.classList.remove('active-runner');
+                const bar = document.getElementById(`track-bar-${id}`);
+                bar.style.width = '0%';
+                bar.style.backgroundColor = 'var(--accent)';
+            }
+
+            document.getElementById(`next-split-${id}`).textContent = a.lockedNextSplit;
+            document.getElementById(`est-finish-${id}`).textContent = a.lockedEstFinish;
+            document.getElementById(`last-split-${id}`).textContent = a.lockedLastSplit;
+            document.getElementById(`pace-${id}`).textContent = a.lockedPace;
+
+            const undoBtn = document.getElementById(`undo-btn-${id}`);
+            const redoBtn = document.getElementById(`redo-btn-${id}`);
+
+            if (a.lapHistory.length > 0 && raceState === 'RUNNING') {
+                undoBtn.removeAttribute('disabled');
+            } else {
+                undoBtn.setAttribute('disabled', 'true');
+            }
+
+            if (a.redoStack.length > 0 && raceState === 'RUNNING') {
+                redoBtn.removeAttribute('disabled');
+            } else {
+                redoBtn.setAttribute('disabled', 'true');
+            }
+        }
+
+        function updateCardTrackBar(id) {
+            const a = athletes.find(item => item.id === id);
+            if (!a) return;
+
+            let isFinished = a.lapsRemaining === 0;
+            const trackBar = document.getElementById(`track-bar-${id}`);
+
+            if (raceState === 'RUNNING' && !isFinished && a.lapHistory.length > 0) {
+                let totalSplitTimeMs = a.lapHistory.reduce((sum, entry) => sum + entry.rawSplit, 0);
+                let totalLapsCompleted = a.totalLaps - a.lapsRemaining;
+                if (totalLapsCompleted > 0) {
+                    let avgLapMs = totalSplitTimeMs / totalLapsCompleted;
+                    let timeIntoLap = masterElapsedTime - a.lastLapTimestamp;
+                    let progressFraction = timeIntoLap / avgLapMs;
+                    let fillPercent = Math.min(100, Math.max(0, progressFraction * 100));
+                    
+                    trackBar.style.width = `${fillPercent}%`;
+                    
+                    if (fillPercent >= 100) {
+                        trackBar.style.backgroundColor = 'var(--danger)';
+                    } else {
+                        trackBar.style.backgroundColor = 'var(--accent)';
+                    }
+                    return;
+                }
+            }
+            trackBar.style.width = '0%';
+            trackBar.style.backgroundColor = 'var(--accent)';
+        }
+
+        function formatTimeOfDay(date) {
+            let h = date.getHours();
+            let m = date.getMinutes();
+            let s = date.getSeconds();
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        function formatTimeWithHours(ms) {
+            let totalSecs = ms / 1000;
+            let h = Math.floor(totalSecs / 3600);
+            let m = Math.floor((totalSecs % 3600) / 60);
+            let s = Math.floor(totalSecs % 60);
+            let tenths = Math.floor((totalSecs % 1) * 10);
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${tenths}`;
+        }
+
+        function formatTimeWithHoursNoTenths(ms) {
+            let totalSecs = ms / 1000;
+            let h = Math.floor(totalSecs / 3600);
+            let m = Math.floor((totalSecs % 3600) / 60);
+            let s = Math.floor(totalSecs % 60);
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        function formatSplitTime(ms) {
+            let totalSecs = ms / 1000;
+            let m = Math.floor(totalSecs / 60);
+            let s = Math.floor(totalSecs % 60);
+            let cs = Math.floor((totalSecs % 1) * 100);
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
+        }
+
+        function formatPaceMinutesPerKm(ms) {
+            let totalSecs = Math.round(ms / 1000);
+            let m = Math.floor(totalSecs / 60);
+            let s = totalSecs % 60;
+            return `${m}:${String(s).padStart(2, '0')}/km`;
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        init();
+    </script>
+</body>
+</html>
