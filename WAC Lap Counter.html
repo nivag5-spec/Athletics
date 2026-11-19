@@ -767,10 +767,10 @@
         }
 
         function renderLapColumns(a) {
-            let totalIntegerLaps = Math.max(1, Math.floor(a.totalLaps));
+            let startLapCol = Math.max(1, Math.ceil(a.totalLaps) - 1);
             let html = '';
             
-            for (let lapNum = totalIntegerLaps; lapNum >= 1; lapNum--) {
+            for (let lapNum = startLapCol; lapNum >= 1; lapNum--) {
                 let lapRecord = a.lapHistory.find(l => l.lapNumber === lapNum);
                 if (lapRecord) {
                     html += `
@@ -986,7 +986,7 @@
             const startObj = raceStartTimestamp ? new Date(raceStartTimestamp) : new Date();
             const dateStr = startObj.toLocaleDateString('en-AU');
             const timeStr = startObj.toLocaleTimeString('en-AU', { hour12: false });
-            const totalIntegerLaps = Math.max(1, Math.floor(globalDistance));
+            const startLapCol = Math.max(1, Math.ceil(globalDistance) - 1);
 
             let rows = [];
 
@@ -998,7 +998,7 @@
 
             // Column Headers for Athlete Cards
             let tableHeader = ["Runner #", "Name", "Status", "Final / Est. Time", "Finish Time (TOD)", "Avg Pace (min/km)"];
-            for (let lapNum = totalIntegerLaps; lapNum >= 1; lapNum--) {
+            for (let lapNum = startLapCol; lapNum >= 1; lapNum--) {
                 tableHeader.push(`Lap ${lapNum} Time`);
                 tableHeader.push(`Lap ${lapNum} Split`);
             }
@@ -1037,7 +1037,7 @@
                     summaryPace
                 ];
 
-                for (let lapNum = totalIntegerLaps; lapNum >= 1; lapNum--) {
+                for (let lapNum = startLapCol; lapNum >= 1; lapNum--) {
                     let lapRecord = a.lapHistory.find(l => l.lapNumber === lapNum);
                     if (lapRecord) {
                         athleteRow.push(lapRecord.total);
@@ -1080,8 +1080,8 @@
             let currentFraction = Math.round((a.lapsRemaining % 1) * 1000) / 1000;
             let lapAmountCompleted = (currentFraction !== 0) ? currentFraction : 1.0;
             
-            let totalIntegerLaps = Math.max(1, Math.floor(a.totalLaps));
-            let lapNumber = totalIntegerLaps - a.lapHistory.length;
+            let startLapCol = Math.max(1, Math.ceil(a.totalLaps) - 1);
+            let lapNumber = startLapCol - a.lapHistory.length;
 
             let prevTotalTime = a.lapHistory.length > 0 ? a.lapHistory[a.lapHistory.length - 1].rawTotal : 0;
             let currentTotalTime = masterElapsedTime;
