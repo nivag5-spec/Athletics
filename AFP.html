@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ApexFinish Pro - Race Finish & Photo-Finish Strip Console</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#fff7ed',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom scrollbars for trackside console look */
+    ::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    .scan-cursor {
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans overflow-x-hidden antialiased select-none bg-slate-950 text-slate-100">
+
+  <!-- TOP APP HEADER / STATUS BAR -->
+  <header class="bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
+    <div class="flex items-center space-x-3">
+      <div class="bg-gradient-to-tr from-brand-600 to-amber-500 p-2 rounded-lg text-slate-950 font-black shadow-lg shadow-brand-500/20">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-base font-extrabold tracking-wide uppercase text-slate-100 flex items-center gap-2">
+          ApexFinish <span class="bg-brand-500/10 text-brand-500 border border-brand-500/30 text-xs px-1.5 py-0.5 rounded font-mono font-semibold">PRO 60FPS</span>
+        </h1>
+        <p class="text-xs text-slate-400">Photo-Finish & Race Timing Console</p>
+      </div>
+    </div>
+
+    <!-- Live Telemetry / Status -->
+    <div class="flex items-center space-x-4 bg-slate-950/80 px-3 py-1.5 rounded-lg border border-slate-800 text-xs font-mono">
+      <div class="flex items-center space-x-2">
+        <span id="statusIndicatorDot" class="w-2.5 h-2.5 rounded-full bg-slate-500 animate-pulse"></span>
+        <span id="statusText" class="font-bold text-slate-300 uppercase tracking-wider">IDLE</span>
+      </div>
+      <div class="h-3 w-px bg-slate-800"></div>
+      <div class="text-slate-400">
+        FPS: <span id="fpsDisplay" class="text-emerald-400 font-bold">0.0</span>
+      </div>
+      <div class="h-3 w-px bg-slate-800"></div>
+      <div class="text-slate-400">
+        RES: <span id="resDisplay" class="text-slate-200">0x0</span>
+      </div>
+      <div class="h-3 w-px bg-slate-800"></div>
+      <div class="text-slate-400">
+        BUF: <span id="bufCountDisplay" class="text-cyan-400 font-bold">0 frames</span>
+      </div>
+    </div>
+
+    <!-- Camera Source Controls & Demo Button -->
+    <div class="flex items-center space-x-2">
+      <select id="cameraSelect" class="bg-slate-800 text-slate-200 text-xs border border-slate-700 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-brand-500 max-w-[180px] sm:max-w-[220px]">
+        <option value="">Detecting Cameras...</option>
+      </select>
+      <button id="toggleCamBtn" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition">
+        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+        <span id="camBtnText">Start Cam</span>
+      </button>
+      <button id="demoModeBtn" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        Demo Simulator
+      </button>
+    </div>
+  </header>
+
+  <!-- CONTROL PANEL: RACE CLOCK & CAPTURE TRIGGER -->
+  <section class="bg-slate-900/90 border-b border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between gap-4">
+    <!-- Big Digital Clock -->
+    <div class="flex items-center space-x-4">
+      <div class="bg-slate-950 border border-slate-800 rounded-lg px-4 py-1.5 flex items-center space-x-3 shadow-inner">
+        <span class="text-xs uppercase font-bold tracking-widest text-slate-500">RACE TIME</span>
+        <div id="raceClockDisplay" class="font-mono text-2xl sm:text-3xl font-black text-amber-400 tabular-nums tracking-wider">
+          00:00.00
+        </div>
+      </div>
+
+      <!-- Gun Controls -->
+      <div class="flex items-center space-x-1.5">
+        <button id="startGunBtn" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-3 py-2 rounded-md text-xs flex items-center gap-1 transition shadow-md shadow-emerald-900/30">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+          START GUN
+        </button>
+        <button id="resetGunBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-2.5 py-2 rounded-md text-xs transition">
+          Reset
+        </button>
+        <div class="hidden sm:flex items-center space-x-1 text-xs text-slate-400 ml-2">
+          <span>Offset (ms):</span>
+          <input type="number" id="gunOffsetInput" value="0" step="10" class="w-16 bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-center font-mono text-slate-200 focus:outline-none focus:border-brand-500">
+        </div>
+      </div>
+    </div>
+
+    <!-- Capture Trigger & Buffer Size -->
+    <div class="flex items-center space-x-3">
+      <div class="flex items-center space-x-1.5 text-xs text-slate-400">
+        <label for="bufferSecSelect">Buffer Depth:</label>
+        <select id="bufferSecSelect" class="bg-slate-950 border border-slate-800 text-slate-200 rounded px-2 py-1 font-mono text-xs focus:outline-none">
+          <option value="5">5s</option>
+          <option value="10" selected>10s</option>
+          <option value="15">15s</option>
+          <option value="20">20s</option>
+        </select>
+      </div>
+
+      <button id="captureTriggerBtn" class="bg-gradient-to-r from-brand-500 to-amber-500 hover:from-brand-600 hover:to-amber-600 text-slate-950 font-black px-5 py-2 rounded-md text-xs tracking-wider uppercase flex items-center gap-2 shadow-lg shadow-brand-500/20 active:scale-95 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 9a2 2 0 012-2h0.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><circle cx="12" cy="13" r="3" stroke-width="2.5"></circle></svg>
+        CAPTURE FINISH <span class="bg-slate-950/20 px-1.5 py-0.5 rounded text-[10px] tracking-normal font-mono font-normal">SPACEBAR</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- MAIN WORKSPACE GRID -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 min-h-0 overflow-y-auto">
+
+    <!-- LEFT / TOP COLUMN: 2D FRAME VIEWER & CONTROLS (8 COLS ON DESKTOP) -->
+    <div class="lg:col-span-8 flex flex-col space-y-3 min-h-0">
+      
+      <!-- Video / Canvas Screen Container -->
+      <div class="relative flex-1 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex items-center justify-center min-h-[320px] max-h-[500px]">
+        <!-- Canvas for displaying current live frame or buffered frame -->
+        <canvas id="mainViewerCanvas" class="max-w-full max-h-full object-contain cursor-crosshair"></canvas>
+
+        <!-- Dynamic Overlay Details (Top Left) -->
+        <div class="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono space-y-0.5 pointer-events-none">
+          <div class="text-slate-400">FRAME: <span id="frameNumTag" class="text-cyan-400 font-bold">0 / 0</span></div>
+          <div class="text-slate-400">STAMP: <span id="frameTimeTag" class="text-amber-400 font-bold">00:00.00</span></div>
+        </div>
+
+        <!-- Virtual Finish Line Label Tag (Top Right) -->
+        <div class="absolute top-3 right-3 bg-red-950/80 border border-red-800/80 text-red-200 text-xs font-mono px-2.5 py-1 rounded flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+          FINISH LINE @ <span id="lineXTag" class="font-bold">50.0%</span>
+        </div>
+
+        <!-- Placeholder Overlay when inactive -->
+        <div id="canvasPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 text-center p-6 space-y-3">
+          <div class="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-200">Camera Feed Idle</h3>
+            <p class="text-xs text-slate-400 max-w-sm mt-1">Select a camera above and click <b>Start Cam</b>, or launch the <b>Demo Simulator</b> to test full race capture immediately.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FRAME SCRUBBER & CONFIG TOOLBAR -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-3">
+        <!-- Scrub Slider & Frame Stepper -->
+        <div class="flex items-center space-x-3">
+          <button id="prevFrameBtn" title="Previous Frame (Left Arrow)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-lg text-xs font-semibold border border-slate-700 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
+          </button>
+          
+          <input type="range" id="frameScrubSlider" min="0" max="0" value="0" class="flex-1 h-2 bg-slate-950 border border-slate-800 rounded-lg appearance-none cursor-pointer accent-brand-500">
+
+          <button id="nextFrameBtn" title="Next Frame (Right Arrow)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-lg text-xs font-semibold border border-slate-700 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
+          </button>
+
+          <button id="playReviewBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
+            <svg id="playIcon" class="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+            <span id="playBtnText">Replay</span>
+          </button>
+        </div>
+
+        <!-- Slit-Scan Settings Bar -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
+          <!-- Virtual Finish Line Position -->
+          <div class="flex items-center space-x-2">
+            <label class="text-slate-400 shrink-0 font-medium">Finish Line X:</label>
+            <input type="range" id="lineXSlider" min="5" max="95" value="50" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-red-500">
+          </div>
+
+          <!-- Slit Slice Width -->
+          <div class="flex items-center space-x-2">
+            <label class="text-slate-400 shrink-0 font-medium">Slit Width:</label>
+            <select id="slitWidthSelect" class="bg-slate-900 border border-slate-800 rounded px-2 py-0.5 text-slate-200 focus:outline-none">
+              <option value="1">1 px (Ultra-Fine)</option>
+              <option value="2" selected>2 px (Balanced)</option>
+              <option value="3">3 px (Wide)</option>
+              <option value="4">4 px (Extra Wide)</option>
+            </select>
+          </div>
+
+          <!-- Runner Direction Toggle -->
+          <div class="flex items-center space-x-2">
+            <label class="text-slate-400 shrink-0 font-medium">Runner Travel:</label>
+            <button id="directionToggleBtn" class="bg-slate-900 border border-slate-800 hover:border-slate-700 text-cyan-400 font-mono px-2 py-0.5 rounded text-xs w-full text-center font-bold transition">
+              Left ➔ Right
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: RESULTS LOG & EXPORT PANEL (4 COLS ON DESKTOP) -->
+    <div class="lg:col-span-4 flex flex-col bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl min-h-[350px]">
+      
+      <!-- Panel Header -->
+      <div class="bg-slate-950 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+        <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+          <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+          Official Race Results
+        </h2>
+        <span id="resultCountTag" class="bg-slate-800 text-slate-400 text-[10px] font-mono px-2 py-0.5 rounded-full font-bold">0 logged</span>
+      </div>
+
+      <!-- Quick Add Form -->
+      <div class="p-3 border-b border-slate-800/80 bg-slate-900/50 space-y-2">
+        <div class="grid grid-cols-12 gap-2">
+          <input type="text" id="bibInput" placeholder="Bib #" class="col-span-4 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-brand-500 font-mono">
+          <input type="text" id="nameInput" placeholder="Runner Name / Team" class="col-span-8 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-brand-500">
+        </div>
+        <button id="logFinisherBtn" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1.5 transition active:scale-98">
+          <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+          LOG FINISHER AT CURRENT FRAME <span class="text-[10px] text-slate-400 font-mono font-normal">[ENTER]</span>
+        </button>
+      </div>
+
+      <!-- Results Table -->
+      <div class="flex-1 overflow-y-auto p-2">
+        <table class="w-full text-left text-xs font-mono">
+          <thead class="text-[10px] text-slate-500 uppercase bg-slate-950/60 sticky top-0">
+            <tr>
+              <th class="p-2 w-10 text-center">PL</th>
+              <th class="p-2 w-14">BIB</th>
+              <th class="p-2">ATHLETE</th>
+              <th class="p-2 text-right">TIME</th>
+              <th class="p-2 w-8"></th>
+            </tr>
+          </thead>
+          <tbody id="resultsTableBody" class="divide-y divide-slate-800/50 text-slate-300">
+            <!-- Dynamic Log Rows -->
+            <tr id="emptyResultsRow">
+              <td colspan="5" class="p-6 text-center text-slate-600 text-xs font-sans">
+                No finishers logged yet.<br>Scrub to runner torso crossing finish line & press <b class="text-slate-400">Log Finisher</b>.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Export & Action Footer -->
+      <div class="p-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-2">
+        <button id="exportCsvBtn" class="flex-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-semibold py-1.5 rounded-md flex items-center justify-center gap-1 transition">
+          <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          Export CSV
+        </button>
+        <button id="exportStripBtn" class="flex-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-semibold py-1.5 rounded-md flex items-center justify-center gap-1 transition">
+          <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          Export Strip
+        </button>
+        <button id="clearResultsBtn" title="Clear Results" class="bg-slate-900 hover:bg-red-950/50 hover:text-red-400 border border-slate-800 text-slate-500 p-1.5 rounded-md transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- BOTTOM PANEL: SYNCHRONIZED SLIT-SCAN PHOTO-FINISH STRIP TIMELINE -->
+  <section class="bg-slate-900 border-t border-slate-800 p-3 shrink-0">
+    <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center space-x-2">
+        <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-brand-500"></span>
+          Slit-Scan Photo-Finish Timeline Strip
+        </h3>
+        <span class="text-[11px] text-slate-500 font-mono">(Stitched vertical slices down finish line over time)</span>
+      </div>
+      <div class="text-[11px] text-slate-400 font-mono">
+        Click or drag anywhere on the strip below to jump to frame
+      </div>
+    </div>
+
+    <!-- Slit Scan Canvas Container with Horizontal Scroll -->
+    <div id="slitContainer" class="relative bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto overflow-y-hidden shadow-inner h-[140px] flex items-center cursor-pointer">
+      <canvas id="slitScanCanvas" class="h-full block"></canvas>
+      
+      <!-- Interactive Red Frame Cursor Marker -->
+      <div id="slitCursor" class="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none scan-cursor hidden z-10">
+        <div class="w-2.5 h-2.5 bg-red-500 rotate-45 -ml-1 -mt-1 shadow"></div>
+      </div>
+
+      <!-- Strip Empty Placeholder -->
+      <div id="slitPlaceholder" class="absolute inset-0 flex items-center justify-center text-slate-600 text-xs font-mono">
+        Slit-Scan strip will generate automatically after capturing finish or in demo mode.
+      </div>
+    </div>
+  </section>
+
+  <!-- HIDDEN VIDEO & UTILITY CANVAS ELEMENTS -->
+  <video id="webcamVideo" autoplay playsinline muted class="hidden"></video>
+  <canvas id="offscreenCanvas" class="hidden"></canvas>
+
+  <!-- JAVASCRIPT APP LOGIC -->
+  <script>
+    (() => {
+      // APP STATE
+      const state = {
+        mode: 'IDLE', // 'IDLE', 'LIVE', 'REVIEW', 'DEMO'
+        cameraStream: null,
+        videoElement: document.getElementById('webcamVideo'),
+        
+        // Race Timing
+        gunRunning: false,
+        gunStartTime: 0,
+        gunOffsetMs: 0,
+        clockInterval: null,
+
+        // Rolling Ring Buffer
+        bufferSec: 10,
+        frameBuffer: [], // Array<{ bitmap: ImageBitmap, raceTimeMs: number, perfTimeMs: number, index: number }>
+        maxBufferFrames: 600, // calculated based on 60fps
+        isCapturingPost: false,
+
+        // Review & Slit Scan Settings
+        lineXPercent: 50,
+        slitWidthPx: 2,
+        runnerDirection: 'L2R', // 'L2R' or 'R2L'
+        currentFrameIdx: 0,
+        isReplaying: false,
+        replayInterval: null,
+
+        // Telemetry & FPS Counter
+        frameCount: 0,
+        lastFpsUpdate: performance.now(),
+        calculatedFps: 0,
+
+        // Results Log
+        results: [],
+
+        // Demo Mode State
+        demoInterval: null,
+        demoRunners: []
+      };
+
+      // DOM ELEMENTS
+      const dom = {
+        cameraSelect: document.getElementById('cameraSelect'),
+        toggleCamBtn: document.getElementById('toggleCamBtn'),
+        camBtnText: document.getElementById('camBtnText'),
+        demoModeBtn: document.getElementById('demoModeBtn'),
+        
+        statusIndicatorDot: document.getElementById('statusIndicatorDot'),
+        statusText: document.getElementById('statusText'),
+        fpsDisplay: document.getElementById('fpsDisplay'),
+        resDisplay: document.getElementById('resDisplay'),
+        bufCountDisplay: document.getElementById('bufCountDisplay'),
+
+        raceClockDisplay: document.getElementById('raceClockDisplay'),
+        startGunBtn: document.getElementById('startGunBtn'),
+        resetGunBtn: document.getElementById('resetGunBtn'),
+        gunOffsetInput: document.getElementById('gunOffsetInput'),
+        bufferSecSelect: document.getElementById('bufferSecSelect'),
+        captureTriggerBtn: document.getElementById('captureTriggerBtn'),
+
+        mainViewerCanvas: document.getElementById('mainViewerCanvas'),
+        canvasPlaceholder: document.getElementById('canvasPlaceholder'),
+        frameNumTag: document.getElementById('frameNumTag'),
+        frameTimeTag: document.getElementById('frameTimeTag'),
+        lineXTag: document.getElementById('lineXTag'),
+
+        frameScrubSlider: document.getElementById('frameScrubSlider'),
+        prevFrameBtn: document.getElementById('prevFrameBtn'),
+        nextFrameBtn: document.getElementById('nextFrameBtn'),
+        playReviewBtn: document.getElementById('playReviewBtn'),
+        playIcon: document.getElementById('playIcon'),
+        playBtnText: document.getElementById('playBtnText'),
+
+        lineXSlider: document.getElementById('lineXSlider'),
+        slitWidthSelect: document.getElementById('slitWidthSelect'),
+        directionToggleBtn: document.getElementById('directionToggleBtn'),
+
+        bibInput: document.getElementById('bibInput'),
+        nameInput: document.getElementById('nameInput'),
+        logFinisherBtn: document.getElementById('logFinisherBtn'),
+        resultsTableBody: document.getElementById('resultsTableBody'),
+        emptyResultsRow: document.getElementById('emptyResultsRow'),
+        resultCountTag: document.getElementById('resultCountTag'),
+        exportCsvBtn: document.getElementById('exportCsvBtn'),
+        exportStripBtn: document.getElementById('exportStripBtn'),
+        clearResultsBtn: document.getElementById('clearResultsBtn'),
+
+        slitContainer: document.getElementById('slitContainer'),
+        slitScanCanvas: document.getElementById('slitScanCanvas'),
+        slitCursor: document.getElementById('slitCursor'),
+        slitPlaceholder: document.getElementById('slitPlaceholder'),
+        
+        offscreenCanvas: document.getElementById('offscreenCanvas')
+      };
+
+      const viewerCtx = dom.mainViewerCanvas.getContext('2d');
+      const slitCtx = dom.slitScanCanvas.getContext('2d');
+      const offscreenCtx = dom.offscreenCanvas.getContext('2d');
+
+      // UTILITY: FORMAT MILLISECONDS TO MM:SS.cc
+      function formatRaceTime(ms) {
+        if (ms < 0) ms = 0;
+        const totalSec = Math.floor(ms / 1000);
+        const mins = Math.floor(totalSec / 60);
+        const secs = totalSec % 60;
+        const hundredths = Math.floor((ms % 1000) / 10);
+
+        const pad = (n, width = 2) => String(n).padStart(width, '0');
+        return `${pad(mins)}:${pad(secs)}.${pad(hundredths)}`;
+      }
+
+      // INITIALIZE CAMERA ENUMERATION
+      async function populateCameraDevices() {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoDevices = devices.filter(d => d.kind === 'videoinput');
+          dom.cameraSelect.innerHTML = '';
+
+          if (videoDevices.length === 0) {
+            dom.cameraSelect.innerHTML = '<option value="">No Camera Found</option>';
+            return;
+          }
+
+          videoDevices.forEach((device, idx) => {
+            const opt = document.createElement('option');
+            opt.value = device.deviceId;
+            opt.textContent = device.label || `Camera ${idx + 1}`;
+            dom.cameraSelect.appendChild(opt);
+          });
+        } catch (err) {
+          console.warn('Error enumerating cameras:', err);
+          dom.cameraSelect.innerHTML = '<option value="">Camera Access Blocked</option>';
+        }
+      }
+
+      // START CAMERA STREAM
+      async function startCamera() {
+        stopDemoMode();
+        if (state.cameraStream) {
+          stopCamera();
+        }
+
+        const deviceId = dom.cameraSelect.value;
+        const constraints = {
+          audio: false,
+          video: {
+            deviceId: deviceId ? { exact: deviceId } : undefined,
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 60, min: 30 }
+          }
+        };
+
+        try {
+          state.cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+          state.videoElement.srcObject = state.cameraStream;
+          await state.videoElement.play();
+
+          state.mode = 'LIVE';
+          updateStatusUI('LIVE', 'bg-emerald-500', 'LIVE CAMERA');
+          dom.canvasPlaceholder.classList.add('hidden');
+          dom.camBtnText.textContent = 'Stop Cam';
+
+          // Track FPS & start processing loop
+          state.frameCount = 0;
+          state.lastFpsUpdate = performance.now();
+          
+          if ('requestVideoFrameCallback' in state.videoElement) {
+            state.videoElement.requestVideoFrameCallback(onVideoFrameCallback);
+          } else {
+            requestAnimationFrame(videoFrameFallbackLoop);
+          }
+        } catch (err) {
+          alert('Could not access camera: ' + err.message);
+          console.error(err);
+        }
+      }
+
+      // STOP CAMERA STREAM
+      function stopCamera() {
+        if (state.cameraStream) {
+          state.cameraStream.getTracks().forEach(t => t.stop());
+          state.cameraStream = null;
+        }
+        state.videoElement.srcObject = null;
+        if (state.mode === 'LIVE') {
+          state.mode = 'IDLE';
+          updateStatusUI('IDLE', 'bg-slate-500', 'IDLE');
+        }
+        dom.camBtnText.textContent = 'Start Cam';
+      }
+
+      // UPDATE STATUS UI
+      function updateStatusUI(text, dotClass, badgeText) {
+        dom.statusText.textContent = badgeText || text;
+        dom.statusIndicatorDot.className = `w-2.5 h-2.5 rounded-full ${dotClass} animate-pulse`;
+      }
+
+      // RACE CLOCK MANAGEMENT
+      function startGun() {
+        state.gunRunning = true;
+        state.gunStartTime = performance.now() - (state.gunOffsetMs || 0);
+        dom.startGunBtn.innerHTML = `
+          <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+          STOP CLOCK
+        `;
+        dom.startGunBtn.className = "bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-3 py-2 rounded-md text-xs flex items-center gap-1 transition shadow-md shadow-amber-900/30";
+
+        if (state.clockInterval) clearInterval(state.clockInterval);
+        state.clockInterval = setInterval(() => {
+          const nowMs = performance.now() - state.gunStartTime;
+          dom.raceClockDisplay.textContent = formatRaceTime(nowMs);
+        }, 30);
+      }
+
+      function stopGun() {
+        state.gunRunning = false;
+        if (state.clockInterval) clearInterval(state.clockInterval);
+        dom.startGunBtn.innerHTML = `
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+          START GUN
+        `;
+        dom.startGunBtn.className = "bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-3 py-2 rounded-md text-xs flex items-center gap-1 transition shadow-md shadow-emerald-900/30";
+      }
+
+      function resetGun() {
+        stopGun();
+        state.gunStartTime = performance.now();
+        state.gunOffsetMs = parseInt(dom.gunOffsetInput.value, 10) || 0;
+        dom.raceClockDisplay.textContent = formatRaceTime(0);
+      }
+
+      // FRAME PROCESSING & ROLLING RING BUFFER ENGINE
+      async function processIncomingVideoFrame(sourceElement) {
+        if (state.mode !== 'LIVE' && state.mode !== 'DEMO') return;
+
+        const perfNow = performance.now();
+        const raceTimeMs = state.gunRunning ? (perfNow - state.gunStartTime) : 0;
+
+        // Calculate FPS
+        state.frameCount++;
+        if (perfNow - state.lastFpsUpdate >= 1000) {
+          state.calculatedFps = (state.frameCount * 1000) / (perfNow - state.lastFpsUpdate);
+          dom.fpsDisplay.textContent = state.calculatedFps.toFixed(1);
+          state.frameCount = 0;
+          state.lastFpsUpdate = perfNow;
+        }
+
+        // Capture frame as lightweight ImageBitmap for ring buffer
+        try {
+          const bitmap = await createImageBitmap(sourceElement);
+
+          // Update resolution display
+          dom.resDisplay.textContent = `${bitmap.width}x${bitmap.height}`;
+
+          // Add to rolling buffer
+          state.frameBuffer.push({
+            bitmap,
+            raceTimeMs,
+            perfTimeMs: perfNow,
+            index: state.frameBuffer.length
+          });
+
+          // Enforce rolling buffer time limit (prune old frames)
+          const targetBufferFrames = Math.ceil((state.bufferSec || 10) * (state.calculatedFps || 60));
+          while (state.frameBuffer.length > targetBufferFrames) {
+            const oldest = state.frameBuffer.shift();
+            if (oldest && oldest.bitmap) oldest.bitmap.close(); // Clean up WebGL/Bitmap memory!
+          }
+
+          dom.bufCountDisplay.textContent = `${state.frameBuffer.length} frames`;
+
+          // If live mode, paint current frame to main 2D viewer canvas
+          if (state.mode === 'LIVE') {
+            drawViewerFrame(bitmap, raceTimeMs, state.frameBuffer.length - 1, state.frameBuffer.length);
+          }
+        } catch (e) {
+          console.error("Frame capture error:", e);
+        }
+      }
+
+      function onVideoFrameCallback(now, metadata) {
+        if (state.mode === 'LIVE') {
+          processIncomingVideoFrame(state.videoElement);
+          state.videoElement.requestVideoFrameCallback(onVideoFrameCallback);
+        }
+      }
+
+      function videoFrameFallbackLoop() {
+        if (state.mode === 'LIVE') {
+          processIncomingVideoFrame(state.videoElement);
+          requestAnimationFrame(videoFrameFallbackLoop);
+        }
+      }
+
+      // DRAW 2D FRAME VIEWER WITH OVERLAYS
+      function drawViewerFrame(bitmap, raceTimeMs, frameIdx, totalFrames) {
+        if (!bitmap) return;
+
+        dom.mainViewerCanvas.width = bitmap.width;
+        dom.mainViewerCanvas.height = bitmap.height;
+
+        // 1. Draw camera/simulated image frame
+        viewerCtx.drawImage(bitmap, 0, 0);
+
+        // 2. Draw Red Virtual Finish Line Overlay
+        const lineX = (state.lineXPercent / 100) * bitmap.width;
+        
+        viewerCtx.save();
+        // Line shadow glow
+        viewerCtx.shadowColor = 'rgba(239, 68, 68, 0.8)';
+        viewerCtx.shadowBlur = 8;
+        
+        // Vertical Finish Line
+        viewerCtx.strokeStyle = '#ef4444';
+        viewerCtx.lineWidth = 2.5;
+        viewerCtx.setLineDash([8, 4]); // Dashed line effect
+        viewerCtx.beginPath();
+        viewerCtx.moveTo(lineX, 0);
+        viewerCtx.lineTo(lineX, bitmap.height);
+        viewerCtx.stroke();
+        viewerCtx.restore();
+
+        // Top & Bottom finish line target handles
+        viewerCtx.fillStyle = '#ef4444';
+        viewerCtx.beginPath();
+        viewerCtx.arc(lineX, 12, 6, 0, Math.PI * 2);
+        viewerCtx.arc(lineX, bitmap.height - 12, 6, 0, Math.PI * 2);
+        viewerCtx.fill();
+
+        // 3. Update Text Tags
+        dom.frameNumTag.textContent = `${frameIdx + 1} / ${totalFrames}`;
+        dom.frameTimeTag.textContent = formatRaceTime(raceTimeMs);
+        dom.lineXTag.textContent = `${state.lineXPercent.toFixed(1)}%`;
+      }
+
+      // TRIGGER CAPTURE & ENTER REVIEW MODE
+      function triggerCaptureFinish() {
+        if (state.frameBuffer.length === 0) {
+          alert('No frame buffer available to capture. Please start camera or demo mode first.');
+          return;
+        }
+
+        // Add short post-trigger capture window (1.5s post trigger)
+        updateStatusUI('CAPTURING', 'bg-amber-500', 'POST-BUFFER...');
+        
+        setTimeout(() => {
+          state.mode = 'REVIEW';
+          stopCamera();
+          stopDemoMode();
+          updateStatusUI('REVIEW', 'bg-cyan-500', 'REVIEW MODE');
+
+          // Configure Frame Scrubber Slider
+          dom.frameScrubSlider.min = 0;
+          dom.frameScrubSlider.max = state.frameBuffer.length - 1;
+          state.currentFrameIdx = state.frameBuffer.length - 1;
+          dom.frameScrubSlider.value = state.currentFrameIdx;
+
+          // Generate Slit-Scan Strip Canvas
+          generateSlitScanStrip();
+
+          // Display last captured frame
+          showFrameAtIndex(state.currentFrameIdx);
+        }, 1200);
+      }
+
+      // GENERATE SYNCHRONIZED SLIT-SCAN PHOTO-FINISH STRIP
+      function generateSlitScanStrip() {
+        if (state.frameBuffer.length === 0) return;
+
+        dom.slitPlaceholder.classList.add('hidden');
+        const count = state.frameBuffer.length;
+        const sliceW = state.slitWidthPx;
+        const sampleHeight = state.frameBuffer[0].bitmap.height;
+
+        // Calculate total width of slit scan strip canvas
+        const stripWidth = count * sliceW;
+        dom.slitScanCanvas.width = stripWidth;
+        dom.slitScanCanvas.height = sampleHeight;
+
+        // Clear canvas
+        slitCtx.clearRect(0, 0, stripWidth, sampleHeight);
+
+        // Extract vertical line slice from each frame and stitch chronologically
+        state.frameBuffer.forEach((frame, i) => {
+          const bitmap = frame.bitmap;
+          const sourceX = (state.lineXPercent / 100) * bitmap.width - (sliceW / 2);
+
+          // Calculate target horizontal position based on runner direction
+          let targetX = i * sliceW;
+          if (state.runnerDirection === 'R2L') {
+            targetX = (count - 1 - i) * sliceW;
+          }
+
+          // Draw vertical slice onto slit scan canvas
+          slitCtx.drawImage(
+            bitmap,
+            Math.max(0, sourceX), 0, sliceW, sampleHeight, // Source slice
+            targetX, 0, sliceW, sampleHeight              // Target strip position
+          );
+        });
+
+        // Overlay Time Ticks along the bottom of the slit scan strip
+        drawTimeTicksOnStrip(stripWidth, sampleHeight, count, sliceW);
+
+        // Update cursor position
+        updateSlitCursorPosition();
+      }
+
+      // DRAW TIME TICKS & STAMPS ON SLIT-SCAN STRIP
+      function drawTimeTicksOnStrip(width, height, totalFrames, sliceW) {
+        slitCtx.save();
+        slitCtx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+        slitCtx.fillRect(0, height - 24, width, 24);
+
+        slitCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        slitCtx.fillStyle = '#f8fafc';
+        slitCtx.font = '10px JetBrains Mono';
+
+        // Draw ticks every 10 frames
+        const step = Math.max(1, Math.floor(totalFrames / 30));
+        for (let i = 0; i < totalFrames; i += step) {
+          let x = i * sliceW;
+          if (state.runnerDirection === 'R2L') {
+            x = (totalFrames - 1 - i) * sliceW;
+          }
+
+          slitCtx.beginPath();
+          slitCtx.moveTo(x, height - 24);
+          slitCtx.lineTo(x, height);
+          slitCtx.stroke();
+
+          const timeStr = formatRaceTime(state.frameBuffer[i].raceTimeMs);
+          slitCtx.fillText(timeStr, x + 3, height - 8);
+        }
+        slitCtx.restore();
+      }
+
+      // SHOW SPECIFIC FRAME AT INDEX & SYNC CURSOR
+      function showFrameAtIndex(index) {
+        if (index < 0 || index >= state.frameBuffer.length) return;
+        state.currentFrameIdx = index;
+        dom.frameScrubSlider.value = index;
+
+        const frame = state.frameBuffer[index];
+        drawViewerFrame(frame.bitmap, frame.raceTimeMs, index, state.frameBuffer.length);
+        updateSlitCursorPosition();
+      }
+
+      // UPDATE SLIT SCAN RED CURSOR LINE POSITION
+      function updateSlitCursorPosition() {
+        if (state.frameBuffer.length === 0) return;
+        dom.slitCursor.classList.remove('hidden');
+
+        const totalFrames = state.frameBuffer.length;
+        const sliceW = state.slitWidthPx;
+        let xPx = state.currentFrameIdx * sliceW;
+        if (state.runnerDirection === 'R2L') {
+          xPx = (totalFrames - 1 - state.currentFrameIdx) * sliceW;
+        }
+
+        dom.slitCursor.style.left = `${xPx}px`;
+
+        // Auto-scroll slit scan container to keep cursor in view
+        const containerW = dom.slitContainer.clientWidth;
+        const scrollLeft = dom.slitContainer.scrollLeft;
+        if (xPx < scrollLeft || xPx > scrollLeft + containerW - 50) {
+          dom.slitContainer.scrollLeft = xPx - containerW / 2;
+        }
+      }
+
+      // SLIT SCAN STRIP CLICK TO SCRUB
+      dom.slitContainer.addEventListener('click', (e) => {
+        if (state.frameBuffer.length === 0) return;
+        const rect = dom.slitScanCanvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+
+        const totalFrames = state.frameBuffer.length;
+        const sliceW = state.slitWidthPx;
+
+        let frameIdx = Math.floor(clickX / sliceW);
+        if (state.runnerDirection === 'R2L') {
+          frameIdx = totalFrames - 1 - frameIdx;
+        }
+
+        frameIdx = Math.max(0, Math.min(totalFrames - 1, frameIdx));
+        showFrameAtIndex(frameIdx);
+      });
+
+      // FINISHER RESULTS LOGGING
+      function logFinisher() {
+        if (state.frameBuffer.length === 0) {
+          alert("No finish capture available to log.");
+          return;
+        }
+
+        const currentFrame = state.frameBuffer[state.currentFrameIdx];
+        const bib = dom.bibInput.value.trim() || `RUNNER-${state.results.length + 1}`;
+        const name = dom.nameInput.value.trim() || `Athlete ${state.results.length + 1}`;
+        const timeFormatted = formatRaceTime(currentFrame.raceTimeMs);
+
+        const resultItem = {
+          id: Date.now(),
+          place: state.results.length + 1,
+          bib,
+          name,
+          timeFormatted,
+          raceTimeMs: currentFrame.raceTimeMs,
+          frameIdx: state.currentFrameIdx + 1
+        };
+
+        state.results.push(resultItem);
+
+        // Sort results by race time
+        state.results.sort((a, b) => a.raceTimeMs - b.raceTimeMs);
+        // Re-assign places
+        state.results.forEach((r, idx) => r.place = idx + 1);
+
+        renderResultsTable();
+
+        // Reset inputs
+        dom.bibInput.value = '';
+        dom.nameInput.value = '';
+      }
+
+      function renderResultsTable() {
+        dom.resultsTableBody.innerHTML = '';
+        dom.resultCountTag.textContent = `${state.results.length} logged`;
+
+        if (state.results.length === 0) {
+          dom.resultsTableBody.appendChild(dom.emptyResultsRow);
+          return;
+        }
+
+        state.results.forEach((res) => {
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-800/60 transition group cursor-pointer";
+          tr.onclick = () => showFrameAtIndex(res.frameIdx - 1);
+
+          tr.innerHTML = `
+            <td class="p-2 text-center font-bold ${res.place === 1 ? 'text-amber-400' : res.place === 2 ? 'text-slate-300' : res.place === 3 ? 'text-amber-600' : 'text-slate-400'}">${res.place}</td>
+            <td class="p-2 font-bold text-slate-200">${res.bib}</td>
+            <td class="p-2 text-slate-300">${res.name}</td>
+            <td class="p-2 text-right font-bold text-amber-400">${res.timeFormatted}</td>
+            <td class="p-2 text-right">
+              <button onclick="event.stopPropagation(); removeResult(${res.id})" class="text-slate-500 hover:text-red-400 p-0.5 transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </td>
+          `;
+          dom.resultsTableBody.appendChild(tr);
+        });
+      }
+
+      window.removeResult = function(id) {
+        state.results = state.results.filter(r => r.id !== id);
+        state.results.forEach((r, idx) => r.place = idx + 1);
+        renderResultsTable();
+      };
+
+      // EXPORT RESULTS CSV
+      function exportCSV() {
+        if (state.results.length === 0) {
+          alert('No results to export.');
+          return;
+        }
+
+        let csv = 'Place,Bib,Athlete Name,Finish Time,Frame Index\n';
+        state.results.forEach(r => {
+          csv += `${r.place},"${r.bib}","${r.name}",${r.timeFormatted},${r.frameIdx}\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Race_Results_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      // EXPORT SLIT SCAN PNG IMAGE
+      function exportStripPNG() {
+        if (dom.slitScanCanvas.width === 0) {
+          alert('No photo-finish strip generated yet.');
+          return;
+        }
+
+        const dataUrl = dom.slitScanCanvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = `Photo_Finish_Strip_${new Date().toISOString().slice(0,10)}.png`;
+        a.click();
+      }
+
+      // DEMO TRACKSIDE SIMULATOR
+      function startDemoSimulator() {
+        stopCamera();
+        stopDemoMode();
+
+        state.mode = 'DEMO';
+        updateStatusUI('DEMO MODE', 'bg-emerald-400', 'DEMO SIMULATOR');
+        dom.canvasPlaceholder.classList.add('hidden');
+
+        // Reset buffer & clock
+        state.frameBuffer.forEach(f => f.bitmap && f.bitmap.close());
+        state.frameBuffer = [];
+        resetGun();
+        startGun();
+
+        // 4 Runner models with different speeds & bib numbers
+        state.demoRunners = [
+          { bib: '101', name: 'A. Bolt', lane: 1, speed: 1.08, pos: -150, color: '#ef4444', headColor: '#fca5a5' },
+          { bib: '204', name: 'Y. Blake', lane: 2, speed: 1.06, pos: -170, color: '#3b82f6', headColor: '#93c5fd' },
+          { bib: '312', name: 'J. Gatlin', lane: 3, speed: 1.05, pos: -180, color: '#10b981', headColor: '#6ee7b7' },
+          { bib: '405', name: 'A. Powell', lane: 4, speed: 1.03, pos: -210, color: '#f59e0b', headColor: '#fde68a' }
+        ];
+
+        // Create Offscreen Demo Canvas (1280x720)
+        const demoCanvas = document.createElement('canvas');
+        demoCanvas.width = 1280;
+        demoCanvas.height = 720;
+        const ctx = demoCanvas.getContext('2d');
+
+        let lastFrameTime = performance.now();
+
+        state.demoInterval = setInterval(() => {
+          if (state.mode !== 'DEMO') return;
+
+          const now = performance.now();
+          const dt = (now - lastFrameTime) / 1000;
+          lastFrameTime = now;
+
+          // Render Synthetic Track Scene
+          ctx.fillStyle = '#7f1d1d'; // Red tartan track
+          ctx.fillRect(0, 0, 1280, 720);
+
+          // Track Lanes
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+          ctx.lineWidth = 4;
+          for (let l = 1; l <= 4; l++) {
+            ctx.beginPath();
+            ctx.moveTo(0, l * 150);
+            ctx.lineTo(1280, l * 150);
+            ctx.stroke();
+          }
+
+          // Finish Line Ground Marking
+          const lineX = (state.lineXPercent / 100) * 1280;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(lineX - 8, 0, 16, 720);
+
+          // Render Animated Sprinters
+          state.demoRunners.forEach(r => {
+            r.pos += r.speed * 450 * dt;
+
+            const y = r.lane * 150 - 75;
+            const legOffset = Math.sin(r.pos * 0.08) * 20;
+
+            // Runner Legs
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(r.pos, y + 20);
+            ctx.lineTo(r.pos + legOffset, y + 55);
+            ctx.moveTo(r.pos, y + 20);
+            ctx.lineTo(r.pos - legOffset, y + 55);
+            ctx.stroke();
+
+            // Runner Torso (Jersey)
+            ctx.fillStyle = r.color;
+            ctx.beginPath();
+            ctx.ellipse(r.pos, y, 18, 26, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Bib Number on chest
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px JetBrains Mono';
+            ctx.textAlign = 'center';
+            ctx.fillText(r.bib, r.pos, y + 4);
+
+            // Head
+            ctx.fillStyle = r.headColor;
+            ctx.beginPath();
+            ctx.arc(r.pos + 4, y - 32, 14, 0, Math.PI * 2);
+            ctx.fill();
+          });
+
+          // Feed synthetic frame into rolling buffer
+          processIncomingVideoFrame(demoCanvas);
+
+        }, 1000 / 60); // 60 FPS frame pump
+      }
+
+      function stopDemoMode() {
+        if (state.demoInterval) {
+          clearInterval(state.demoInterval);
+          state.demoInterval = null;
+        }
+      }
+
+      // EVENT LISTENERS
+      dom.toggleCamBtn.addEventListener('click', () => {
+        if (state.mode === 'LIVE') stopCamera();
+        else startCamera();
+      });
+
+      dom.demoModeBtn.addEventListener('click', startDemoSimulator);
+
+      dom.startGunBtn.addEventListener('click', () => {
+        if (state.gunRunning) stopGun();
+        else startGun();
+      });
+
+      dom.resetGunBtn.addEventListener('click', resetGun);
+
+      dom.bufferSecSelect.addEventListener('change', (e) => {
+        state.bufferSec = parseInt(e.target.value, 10);
+      });
+
+      dom.captureTriggerBtn.addEventListener('click', triggerCaptureFinish);
+
+      // Frame Scrubber Slider
+      dom.frameScrubSlider.addEventListener('input', (e) => {
+        showFrameAtIndex(parseInt(e.target.value, 10));
+      });
+
+      dom.prevFrameBtn.addEventListener('click', () => showFrameAtIndex(state.currentFrameIdx - 1));
+      dom.nextFrameBtn.addEventListener('click', () => showFrameAtIndex(state.currentFrameIdx + 1));
+
+      // Replay Review Loop
+      dom.playReviewBtn.addEventListener('click', () => {
+        if (state.isReplaying) {
+          clearInterval(state.replayInterval);
+          state.isReplaying = false;
+          dom.playBtnText.textContent = 'Replay';
+        } else {
+          state.isReplaying = true;
+          dom.playBtnText.textContent = 'Pause';
+          state.replayInterval = setInterval(() => {
+            let next = state.currentFrameIdx + 1;
+            if (next >= state.frameBuffer.length) next = 0;
+            showFrameAtIndex(next);
+          }, 33);
+        }
+      });
+
+      // Finish Line X Slider Change (Regenerates Slit-Scan!)
+      dom.lineXSlider.addEventListener('input', (e) => {
+        state.lineXPercent = parseFloat(e.target.value);
+        if (state.mode === 'REVIEW') {
+          generateSlitScanStrip();
+          showFrameAtIndex(state.currentFrameIdx);
+        }
+      });
+
+      // Slit Width Change
+      dom.slitWidthSelect.addEventListener('change', (e) => {
+        state.slitWidthPx = parseInt(e.target.value, 10);
+        if (state.mode === 'REVIEW') {
+          generateSlitScanStrip();
+        }
+      });
+
+      // Direction Toggle
+      dom.directionToggleBtn.addEventListener('click', () => {
+        if (state.runnerDirection === 'L2R') {
+          state.runnerDirection = 'R2L';
+          dom.directionToggleBtn.textContent = 'Right ➔ Left';
+        } else {
+          state.runnerDirection = 'L2R';
+          dom.directionToggleBtn.textContent = 'Left ➔ Right';
+        }
+        if (state.mode === 'REVIEW') {
+          generateSlitScanStrip();
+        }
+      });
+
+      // Results Logging Buttons
+      dom.logFinisherBtn.addEventListener('click', logFinisher);
+      dom.exportCsvBtn.addEventListener('click', exportCSV);
+      dom.exportStripBtn.addEventListener('click', exportStripPNG);
+      dom.clearResultsBtn.addEventListener('click', () => {
+        if (confirm('Clear all logged finisher results?')) {
+          state.results = [];
+          renderResultsTable();
+        }
+      });
+
+      // KEYBOARD SHORTCUTS
+      window.addEventListener('keydown', (e) => {
+        // Prevent shortcuts if typing in text inputs
+        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+          if (e.key === 'Enter') {
+            logFinisher();
+          }
+          return;
+        }
+
+        if (e.code === 'Space') {
+          e.preventDefault();
+          triggerCaptureFinish();
+        } else if (e.code === 'ArrowLeft') {
+          e.preventDefault();
+          const step = e.shiftKey ? 10 : 1;
+          showFrameAtIndex(state.currentFrameIdx - step);
+        } else if (e.code === 'ArrowRight') {
+          e.preventDefault();
+          const step = e.shiftKey ? 10 : 1;
+          showFrameAtIndex(state.currentFrameIdx + step);
+        } else if (e.code === 'Enter') {
+          e.preventDefault();
+          logFinisher();
+        }
+      });
+
+      // INIT APP
+      populateCameraDevices();
+
+    })();
+  </script>
+</body>
+</html>

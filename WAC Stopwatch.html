@@ -236,10 +236,11 @@
     </div>
 
     <script>
-// ==========================================
+        // ==========================================
         // EASY TO FIND CONFIGURATION AT THE TOP
         // ==========================================
-        const VERSION_NUMBER = "V013"; 
+        const VERSION_NUMBER = "V014"; 
+        const STORAGE_KEY = "wac_stopwatch_state_v1";
         // ==========================================
 
         document.getElementById('sub-header-text').textContent = `Digital Stopwatch [${VERSION_NUMBER}]`;
@@ -251,8 +252,10 @@
         let isRunning = false;
         let splitCount = 0;
         let hasTimestamped = false;
+        let savedTimestampHTML = `DATE: --/--/---- &nbsp;&nbsp; TIME: --:--:--`;
+        let prevSplitText = "00:00.00";
 
-        // Hidden array to accurately track ALL events for the CSV in chronological order
+        // Serializable array to accurately track ALL events for CSV and LocalStorage
         let csvLog = [];
 
         let audioCtx = null;
@@ -269,6 +272,104 @@
         const rollWindow = document.getElementById('roll-window');
         const csvBtn = document.getElementById('csv-btn');
         const printTimestampSpan = document.getElementById('print-timestamp');
+
+        // ==========================================
+        // PERSISTENCE ENGINE (LOCAL STORAGE)
+        // ==========================================
+        function saveState() {
+            const state = {
+                startTime,
+                elapsedTime,
+                isRunning,
+                splitCount,
+                hasTimestamped,
+                savedTimestampHTML,
+                prevSplitText,
+                csvLog
+            };
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch (e) {
+                console.error("Failed to save state to localStorage:", e);
+            }
+        }
+
+        function renderRowFromItem(item) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.place}</td>
+                <td><strong>${item.time}</strong></td>
+                <td><input type="text" placeholder="Type athlete..." class="athlete-name"></td>
+            `;
+            const inputEl = tr.querySelector('input');
+            inputEl.value = item.name || "";
+
+            // Save athlete name automatically as the user types
+            inputEl.addEventListener('input', (e) => {
+                item.name = e.target.value;
+                saveState();
+            });
+
+            printerBody.appendChild(tr);
+            rollWindow.scrollTop = rollWindow.scrollHeight;
+        }
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return;
+
+                const state = JSON.parse(raw);
+                startTime = state.startTime || 0;
+                elapsedTime = state.elapsedTime || 0;
+                isRunning = !!state.isRunning;
+                splitCount = state.splitCount || 0;
+                hasTimestamped = !!state.hasTimestamped;
+                savedTimestampHTML = state.savedTimestampHTML || `DATE: --/--/---- &nbsp;&nbsp; TIME: --:--:--`;
+                prevSplitText = state.prevSplitText || "00:00.00";
+                csvLog = Array.isArray(state.csvLog) ? state.csvLog : [];
+
+                // Restore Header & LCD metadata
+                printTimestampSpan.innerHTML = savedTimestampHTML;
+                lcdSplitCount.textContent = splitCount.toString().padStart(2, '0');
+                lcdPrevSplit.textContent = prevSplitText;
+
+                // Rebuild printer roll rows
+                printerBody.innerHTML = "";
+                csvLog.forEach(item => {
+                    if (item.type === 'data') {
+                        renderRowFromItem(item);
+                    }
+                });
+
+                // Restore running or stopped visual state
+                if (isRunning) {
+                    lcdState.textContent = "RUN";
+                    btnLeft.innerHTML = "Lap / Split";
+                    updateDisplay();
+                    timerInterval = setInterval(updateDisplay, 10);
+                } else if (elapsedTime > 0) {
+                    lcdState.textContent = "STOP";
+                    btnLeft.innerHTML = "Reset";
+                    lcdTime.textContent = formatTime(elapsedTime, true);
+                } else {
+                    lcdState.textContent = "CHRONO";
+                    btnLeft.innerHTML = "Reset";
+                    lcdTime.textContent = "00:00.00";
+                }
+            } catch (e) {
+                console.error("Failed to load state from localStorage:", e);
+            }
+        }
+
+        // Warn user before closing tab if the stopwatch is actively running
+        window.addEventListener('beforeunload', (e) => {
+            if (isRunning) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+        // ==========================================
 
         function initAudio() {
             if (!audioCtx) {
@@ -347,12 +448,14 @@
             const minutes = now.getMinutes().toString().padStart(2, '0');
             const seconds = now.getSeconds().toString().padStart(2, '0');
 
-            printTimestampSpan.innerHTML = `DATE: ${day}/${month}/${year} &nbsp;&nbsp; TIME: ${hours}:${minutes}:${seconds}`;
+            savedTimestampHTML = `DATE: ${day}/${month}/${year} &nbsp;&nbsp; TIME: ${hours}:${minutes}:${seconds}`;
+            printTimestampSpan.innerHTML = savedTimestampHTML;
             hasTimestamped = true;
         }
 
         function resetTimestampUI() {
-            printTimestampSpan.innerHTML = `DATE: --/--/---- &nbsp;&nbsp; TIME: --:--:--`;
+            savedTimestampHTML = `DATE: --/--/---- &nbsp;&nbsp; TIME: --:--:--`;
+            printTimestampSpan.innerHTML = savedTimestampHTML;
             hasTimestamped = false;
         }
 
@@ -420,6 +523,7 @@
 
                 // Log START line to CSV tracking
                 csvLog.push({ type: 'marker', text: `--- START/RESUME Pressed ---`, tod: tod });
+                saveState();
             } else {
                 isRunning = false;
                 const totalAtStop = elapsedTime + (Date.now() - startTime);
@@ -432,8 +536,9 @@
                 
                 // 1. Log the final split time data row
                 recordSplit(formatTime(totalAtStop, false), true, tod);
-                // 2. Log a explicit STOP action line right below it
+                // 2. Log an explicit STOP action line right below it
                 csvLog.push({ type: 'marker', text: `--- STOP Pressed ---`, tod: tod });
+                saveState();
             }
         });
 
@@ -447,8 +552,10 @@
                 const totalSplitTime = elapsedTime + (now - startTime);
                 const formattedSplit = formatTime(totalSplitTime, false); 
                 
+                prevSplitText = formattedSplit;
                 lcdPrevSplit.textContent = formattedSplit;
                 recordSplit(formattedSplit, false, getFormattedTOD());
+                saveState();
             } else {
                 playLapBeep();
                 triggerHapticFeedback(50);
@@ -456,6 +563,7 @@
                 startTime = 0;
                 elapsedTime = 0;
                 splitCount = 0;
+                prevSplitText = "00:00.00";
                 csvLog = []; // Reset CSV logs
                 
                 lcdTime.textContent = "00:00.00";
@@ -465,6 +573,7 @@
                 btnLeft.innerHTML = "Reset";
                 
                 resetTimestampUI(); 
+                saveState();
             }
         });
 
@@ -481,24 +590,17 @@
 
             const timeOfDayStr = todStr || getFormattedTOD();
 
-            // Append row markup visually onto the screen roll
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${displayPlace}</td>
-                <td><strong>${timeStr}</strong></td>
-                <td><input type="text" placeholder="Type athlete..." class="athlete-name"></td>
-            `;
-            printerBody.appendChild(tr);
-            rollWindow.scrollTop = rollWindow.scrollHeight;
-
-            // Cache a clean reference linked to this specific row element in our CSV state
-            csvLog.push({
+            // Create plain serializable object
+            const logItem = {
                 type: 'data',
                 place: displayPlace,
                 time: timeStr,
                 tod: timeOfDayStr,
-                rowRef: tr
-            });
+                name: ""
+            };
+
+            csvLog.push(logItem);
+            renderRowFromItem(logItem);
         }
 
         btnClearAll.addEventListener('click', () => {
@@ -510,6 +612,7 @@
                     lcdSplitCount.textContent = "00";
                     resetTimestampUI();
                 }
+                saveState();
             }
         });
 
@@ -540,13 +643,9 @@
                 // Loop through our tracking array which captures lines chronologically
                 csvLog.forEach(item => {
                     if (item.type === 'marker') {
-                        // Insert an isolated action header line across columns
                         csvContent += `"${item.text}","","${item.tod}",""\n`;
                     } else if (item.type === 'data') {
-                        // Extract user input text directly out of the live screen element reference
-                        const inputEl = item.rowRef.querySelector('input');
-                        const name = inputEl ? inputEl.value.replace(/"/g, '""') : "";
-                        
+                        const name = (item.name || "").replace(/"/g, '""');
                         csvContent += `"${item.place}","${item.time}","${item.tod}","${name}"\n`;
                     }
                 });
@@ -579,8 +678,10 @@
             }
         });
 
+        // Initialize clock and restore previous session if one exists
         updateLiveClock();
         liveClockInterval = setInterval(updateLiveClock, 1000);
+        loadState();
     </script>
 </body>
 </html>
