@@ -2,7 +2,7 @@
 <html lang="en" class="h-full bg-slate-950 text-slate-100">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>ApexFinish Pro - Race Finish & Photo-Finish Strip Console</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -52,29 +52,41 @@
     .scan-cursor {
       box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
     }
+
+    /* Give camera/frame viewer generous vertical room in mobile landscape */
+    @media (orientation: landscape) and (max-height: 540px) {
+      .viewer-stage {
+        min-height: 220px !important;
+        height: 58svh !important;
+        max-height: 64svh !important;
+      }
+      .slit-strip-box {
+        height: 96px !important;
+      }
+    }
   </style>
 </head>
-<body class="h-full flex flex-col font-sans overflow-x-hidden antialiased select-none bg-slate-950 text-slate-100">
+<body class="min-h-full flex flex-col font-sans overflow-x-hidden antialiased select-none bg-slate-950 text-slate-100">
 
   <!-- TOP APP HEADER / STATUS BAR -->
-  <header class="bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
-    <div class="flex items-center space-x-3">
+  <header class="bg-slate-900 border-b border-slate-800 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 sm:gap-3 shrink-0">
+    <div class="flex items-center space-x-2.5 sm:space-x-3">
       <div class="bg-gradient-to-tr from-brand-600 to-amber-500 p-2 rounded-lg text-slate-950 font-black shadow-lg shadow-brand-500/20">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
       </div>
       <div>
-        <h1 class="text-base font-extrabold tracking-wide uppercase text-slate-100 flex items-center gap-2">
-          ApexFinish <span class="bg-brand-500/10 text-brand-500 border border-brand-500/30 text-xs px-1.5 py-0.5 rounded font-mono font-semibold">PRO 60FPS</span>
+        <h1 class="text-sm sm:text-base font-extrabold tracking-wide uppercase text-slate-100 flex items-center gap-2">
+          ApexFinish <span class="bg-brand-500/10 text-brand-500 border border-brand-500/30 text-[10px] sm:text-xs px-1.5 py-0.5 rounded font-mono font-semibold">PRO 60FPS</span>
         </h1>
-        <p class="text-xs text-slate-400">Photo-Finish & Race Timing Console</p>
+        <p class="text-[11px] sm:text-xs text-slate-400 hidden sm:block">Photo-Finish & Race Timing Console</p>
       </div>
     </div>
 
     <!-- Live Telemetry / Status -->
-    <div class="flex items-center space-x-4 bg-slate-950/80 px-3 py-1.5 rounded-lg border border-slate-800 text-xs font-mono">
-      <div class="flex items-center space-x-2">
+    <div class="flex items-center space-x-2.5 sm:space-x-4 bg-slate-950/80 px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-800 text-[11px] sm:text-xs font-mono">
+      <div class="flex items-center space-x-1.5">
         <span id="statusIndicatorDot" class="w-2.5 h-2.5 rounded-full bg-slate-500 animate-pulse"></span>
         <span id="statusText" class="font-bold text-slate-300 uppercase tracking-wider">IDLE</span>
       </div>
@@ -82,8 +94,8 @@
       <div class="text-slate-400">
         FPS: <span id="fpsDisplay" class="text-emerald-400 font-bold">0.0</span>
       </div>
-      <div class="h-3 w-px bg-slate-800"></div>
-      <div class="text-slate-400">
+      <div class="h-3 w-px bg-slate-800 hidden md:block"></div>
+      <div class="text-slate-400 hidden md:block">
         RES: <span id="resDisplay" class="text-slate-200">0x0</span>
       </div>
       <div class="h-3 w-px bg-slate-800"></div>
@@ -92,40 +104,60 @@
       </div>
     </div>
 
-    <!-- Camera Source Controls & Demo Button -->
-    <div class="flex items-center space-x-2">
-      <select id="cameraSelect" class="bg-slate-800 text-slate-200 text-xs border border-slate-700 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-brand-500 max-w-[180px] sm:max-w-[220px]">
+    <!-- Camera Source Controls, Demo Button & Top-Right Fullscreen Button -->
+    <div class="flex items-center space-x-1.5 sm:space-x-2">
+      <select id="cameraSelect" class="bg-slate-800 text-slate-200 text-xs border border-slate-700 rounded-md px-2 py-1.5 focus:outline-none focus:border-brand-500 max-w-[140px] sm:max-w-[210px]">
         <option value="">Detecting Cameras...</option>
       </select>
-      <button id="toggleCamBtn" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition">
-        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+      <button id="toggleCamBtn" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition">
+        <svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
         <span id="camBtnText">Start Cam</span>
       </button>
-      <button id="demoModeBtn" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        Demo Simulator
+      <button id="demoModeBtn" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition">
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span class="hidden sm:inline">Demo Simulator</span>
+        <span class="sm:hidden">Demo</span>
+      </button>
+
+      <!-- Top-Right Fullscreen Toggle Button -->
+      <button
+        id="fullscreenBtn"
+        type="button"
+        title="Toggle Fullscreen"
+        aria-label="Toggle Fullscreen"
+        class="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-brand-500/60 text-slate-200 px-2.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition shrink-0"
+      >
+        <!-- Expand Icon -->
+        <svg id="fullscreenExpandIcon" class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+        </svg>
+        <!-- Compress / Exit Icon -->
+        <svg id="fullscreenExitIcon" class="w-4 h-4 text-amber-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M15 9h4.5M15 9V4.5M15 9l5.25-5.25M9 15H4.5M9 15v4.5M9 15l-5.25 5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"></path>
+        </svg>
+        <span id="fullscreenBtnText" class="hidden md:inline">Fullscreen</span>
       </button>
     </div>
   </header>
 
   <!-- CONTROL PANEL: RACE CLOCK & CAPTURE TRIGGER -->
-  <section class="bg-slate-900/90 border-b border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between gap-4">
+  <section class="bg-slate-900/90 border-b border-slate-800 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 shrink-0">
     <!-- Big Digital Clock -->
-    <div class="flex items-center space-x-4">
-      <div class="bg-slate-950 border border-slate-800 rounded-lg px-4 py-1.5 flex items-center space-x-3 shadow-inner">
-        <span class="text-xs uppercase font-bold tracking-widest text-slate-500">RACE TIME</span>
-        <div id="raceClockDisplay" class="font-mono text-2xl sm:text-3xl font-black text-amber-400 tabular-nums tracking-wider">
+    <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+      <div class="bg-slate-950 border border-slate-800 rounded-lg px-3 sm:px-4 py-1 flex items-center space-x-2.5 sm:space-x-3 shadow-inner">
+        <span class="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-slate-500">RACE TIME</span>
+        <div id="raceClockDisplay" class="font-mono text-xl sm:text-3xl font-black text-amber-400 tabular-nums tracking-wider">
           00:00.00
         </div>
       </div>
 
       <!-- Gun Controls -->
       <div class="flex items-center space-x-1.5">
-        <button id="startGunBtn" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-3 py-2 rounded-md text-xs flex items-center gap-1 transition shadow-md shadow-emerald-900/30">
+        <button id="startGunBtn" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-3 py-1.5 sm:py-2 rounded-md text-xs flex items-center gap-1 transition shadow-md shadow-emerald-900/30">
           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
           START GUN
         </button>
-        <button id="resetGunBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-2.5 py-2 rounded-md text-xs transition">
+        <button id="resetGunBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-2.5 py-1.5 sm:py-2 rounded-md text-xs transition">
           Reset
         </button>
         <div class="hidden sm:flex items-center space-x-1 text-xs text-slate-400 ml-2">
@@ -136,9 +168,9 @@
     </div>
 
     <!-- Capture Trigger & Buffer Size -->
-    <div class="flex items-center space-x-3">
+    <div class="flex items-center space-x-2 sm:space-x-3">
       <div class="flex items-center space-x-1.5 text-xs text-slate-400">
-        <label for="bufferSecSelect">Buffer Depth:</label>
+        <label for="bufferSecSelect" class="hidden sm:inline">Buffer Depth:</label>
         <select id="bufferSecSelect" class="bg-slate-950 border border-slate-800 text-slate-200 rounded px-2 py-1 font-mono text-xs focus:outline-none">
           <option value="5">5s</option>
           <option value="10" selected>10s</option>
@@ -147,52 +179,52 @@
         </select>
       </div>
 
-      <button id="captureTriggerBtn" class="bg-gradient-to-r from-brand-500 to-amber-500 hover:from-brand-600 hover:to-amber-600 text-slate-950 font-black px-5 py-2 rounded-md text-xs tracking-wider uppercase flex items-center gap-2 shadow-lg shadow-brand-500/20 active:scale-95 transition">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 9a2 2 0 012-2h0.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><circle cx="12" cy="13" r="3" stroke-width="2.5"></circle></svg>
-        CAPTURE FINISH <span class="bg-slate-950/20 px-1.5 py-0.5 rounded text-[10px] tracking-normal font-mono font-normal">SPACEBAR</span>
+      <button id="captureTriggerBtn" class="bg-gradient-to-r from-brand-500 to-amber-500 hover:from-brand-600 hover:to-amber-600 text-slate-950 font-black px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-md text-xs tracking-wider uppercase flex items-center gap-2 shadow-lg shadow-brand-500/20 active:scale-95 transition">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 9a2 2 0 012-2h0.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><circle cx="12" cy="13" r="3" stroke-width="2.5"></circle></svg>
+        CAPTURE FINISH <span class="hidden md:inline bg-slate-950/20 px-1.5 py-0.5 rounded text-[10px] tracking-normal font-mono font-normal">SPACEBAR</span>
       </button>
     </div>
   </section>
 
   <!-- MAIN WORKSPACE GRID -->
-  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 min-h-0 overflow-y-auto">
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 p-2.5 sm:p-3">
 
     <!-- LEFT / TOP COLUMN: 2D FRAME VIEWER & CONTROLS (8 COLS ON DESKTOP) -->
-    <div class="lg:col-span-8 flex flex-col space-y-3 min-h-0">
+    <div class="lg:col-span-8 flex flex-col space-y-2.5 sm:space-y-3">
       
-      <!-- Video / Canvas Screen Container -->
-      <div class="relative flex-1 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex items-center justify-center min-h-[320px] max-h-[500px]">
+      <!-- Video / Canvas Screen Container (sized generously for mobile landscape too) -->
+      <div class="viewer-stage relative w-full bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex items-center justify-center min-h-[260px] sm:min-h-[340px] h-[48svh] sm:h-[52vh] max-h-[540px]">
         <!-- Canvas for displaying current live frame or buffered frame -->
-        <canvas id="mainViewerCanvas" class="max-w-full max-h-full object-contain cursor-crosshair"></canvas>
+        <canvas id="mainViewerCanvas" class="w-full h-full object-contain cursor-crosshair"></canvas>
 
         <!-- Dynamic Overlay Details (Top Left) -->
-        <div class="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono space-y-0.5 pointer-events-none">
+        <div class="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 bg-slate-950/80 backdrop-blur-md border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] sm:text-xs font-mono space-y-0.5 pointer-events-none">
           <div class="text-slate-400">FRAME: <span id="frameNumTag" class="text-cyan-400 font-bold">0 / 0</span></div>
           <div class="text-slate-400">STAMP: <span id="frameTimeTag" class="text-amber-400 font-bold">00:00.00</span></div>
         </div>
 
         <!-- Virtual Finish Line Label Tag (Top Right) -->
-        <div class="absolute top-3 right-3 bg-red-950/80 border border-red-800/80 text-red-200 text-xs font-mono px-2.5 py-1 rounded flex items-center gap-1.5">
+        <div class="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 bg-red-950/80 border border-red-800/80 text-red-200 text-[11px] sm:text-xs font-mono px-2.5 py-1 rounded flex items-center gap-1.5 pointer-events-none">
           <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
           FINISH LINE @ <span id="lineXTag" class="font-bold">50.0%</span>
         </div>
 
         <!-- Placeholder Overlay when inactive -->
-        <div id="canvasPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 text-center p-6 space-y-3">
-          <div class="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+        <div id="canvasPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 text-center p-4 sm:p-6 space-y-2.5">
+          <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600">
+            <svg class="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
           </div>
           <div>
-            <h3 class="text-base font-bold text-slate-200">Camera Feed Idle</h3>
+            <h3 class="text-sm sm:text-base font-bold text-slate-200">Camera Feed Idle</h3>
             <p class="text-xs text-slate-400 max-w-sm mt-1">Select a camera above and click <b>Start Cam</b>, or launch the <b>Demo Simulator</b> to test full race capture immediately.</p>
           </div>
         </div>
       </div>
 
       <!-- FRAME SCRUBBER & CONFIG TOOLBAR -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-3">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 space-y-2.5 sm:space-y-3">
         <!-- Scrub Slider & Frame Stepper -->
-        <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-2 sm:space-x-3">
           <button id="prevFrameBtn" title="Previous Frame (Left Arrow)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-lg text-xs font-semibold border border-slate-700 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
           </button>
@@ -210,7 +242,7 @@
         </div>
 
         <!-- Slit-Scan Settings Bar -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 text-xs bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
           <!-- Virtual Finish Line Position -->
           <div class="flex items-center space-x-2">
             <label class="text-slate-400 shrink-0 font-medium">Finish Line X:</label>
@@ -240,7 +272,7 @@
     </div>
 
     <!-- RIGHT COLUMN: RESULTS LOG & EXPORT PANEL (4 COLS ON DESKTOP) -->
-    <div class="lg:col-span-4 flex flex-col bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl min-h-[350px]">
+    <div class="lg:col-span-4 flex flex-col bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl min-h-[320px] max-h-[540px]">
       
       <!-- Panel Header -->
       <div class="bg-slate-950 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
@@ -304,14 +336,14 @@
   </main>
 
   <!-- BOTTOM PANEL: SYNCHRONIZED SLIT-SCAN PHOTO-FINISH STRIP TIMELINE -->
-  <section class="bg-slate-900 border-t border-slate-800 p-3 shrink-0">
-    <div class="flex items-center justify-between mb-2">
+  <section class="bg-slate-900 border-t border-slate-800 p-2.5 sm:p-3 shrink-0">
+    <div class="flex flex-wrap items-center justify-between gap-1 mb-2">
       <div class="flex items-center space-x-2">
         <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-brand-500"></span>
           Slit-Scan Photo-Finish Timeline Strip
         </h3>
-        <span class="text-[11px] text-slate-500 font-mono">(Stitched vertical slices down finish line over time)</span>
+        <span class="text-[11px] text-slate-500 font-mono hidden md:inline">(Stitched vertical slices down finish line over time)</span>
       </div>
       <div class="text-[11px] text-slate-400 font-mono">
         Click or drag anywhere on the strip below to jump to frame
@@ -319,7 +351,7 @@
     </div>
 
     <!-- Slit Scan Canvas Container with Horizontal Scroll -->
-    <div id="slitContainer" class="relative bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto overflow-y-hidden shadow-inner h-[140px] flex items-center cursor-pointer">
+    <div id="slitContainer" class="slit-strip-box relative bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto overflow-y-hidden shadow-inner h-[120px] sm:h-[140px] flex items-center cursor-pointer">
       <canvas id="slitScanCanvas" class="h-full block"></canvas>
       
       <!-- Interactive Red Frame Cursor Marker -->
@@ -328,7 +360,7 @@
       </div>
 
       <!-- Strip Empty Placeholder -->
-      <div id="slitPlaceholder" class="absolute inset-0 flex items-center justify-center text-slate-600 text-xs font-mono">
+      <div id="slitPlaceholder" class="absolute inset-0 flex items-center justify-center text-slate-600 text-xs font-mono px-3 text-center">
         Slit-Scan strip will generate automatically after capturing finish or in demo mode.
       </div>
     </div>
@@ -386,6 +418,10 @@
         toggleCamBtn: document.getElementById('toggleCamBtn'),
         camBtnText: document.getElementById('camBtnText'),
         demoModeBtn: document.getElementById('demoModeBtn'),
+        fullscreenBtn: document.getElementById('fullscreenBtn'),
+        fullscreenExpandIcon: document.getElementById('fullscreenExpandIcon'),
+        fullscreenExitIcon: document.getElementById('fullscreenExitIcon'),
+        fullscreenBtnText: document.getElementById('fullscreenBtnText'),
         
         statusIndicatorDot: document.getElementById('statusIndicatorDot'),
         statusText: document.getElementById('statusText'),
@@ -438,6 +474,46 @@
       const viewerCtx = dom.mainViewerCanvas.getContext('2d');
       const slitCtx = dom.slitScanCanvas.getContext('2d');
       const offscreenCtx = dom.offscreenCanvas.getContext('2d');
+
+      // FULLSCREEN TOGGLE LOGIC
+      function getFullscreenElement() {
+        return document.fullscreenElement || document.webkitFullscreenElement || null;
+      }
+
+      function syncFullscreenButtonUI() {
+        const isFullscreen = Boolean(getFullscreenElement());
+        dom.fullscreenExpandIcon.classList.toggle('hidden', isFullscreen);
+        dom.fullscreenExitIcon.classList.toggle('hidden', !isFullscreen);
+        dom.fullscreenBtnText.textContent = isFullscreen ? 'Exit Full' : 'Fullscreen';
+        dom.fullscreenBtn.title = isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen';
+      }
+
+      async function toggleFullscreen() {
+        const target = document.documentElement;
+        try {
+          if (!getFullscreenElement()) {
+            if (target.requestFullscreen) {
+              await target.requestFullscreen();
+            } else if (target.webkitRequestFullscreen) {
+              target.webkitRequestFullscreen();
+            } else {
+              alert('Fullscreen mode is not supported by this browser.');
+            }
+          } else {
+            if (document.exitFullscreen) {
+              await document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+              document.webkitExitFullscreen();
+            }
+          }
+        } catch (err) {
+          console.warn('Fullscreen toggle failed:', err);
+          alert('Could not switch fullscreen mode: ' + err.message);
+        }
+      }
+
+      document.addEventListener('fullscreenchange', syncFullscreenButtonUI);
+      document.addEventListener('webkitfullscreenchange', syncFullscreenButtonUI);
 
       // UTILITY: FORMAT MILLISECONDS TO MM:SS.cc
       function formatRaceTime(ms) {
@@ -547,7 +623,7 @@
           <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
           STOP CLOCK
         `;
-        dom.startGunBtn.className = "bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-3 py-2 rounded-md text-xs flex items-center gap-1 transition shadow-md shadow-amber-900/30";
+        dom.startGunBtn.className = "bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-3 py-1.5 sm:py-2 rounded-md text-xs flex items-center gap-1 transition shadow-md shadow-amber-900/30";
 
         if (state.clockInterval) clearInterval(state.clockInterval);
         state.clockInterval = setInterval(() => {
@@ -563,7 +639,7 @@
           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
           START GUN
         `;
-        dom.startGunBtn.className = "bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-3 py-2 rounded-md text-xs flex items-center gap-1 transition shadow-md shadow-emerald-900/30";
+        dom.startGunBtn.className = "bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-3 py-1.5 sm:py-2 rounded-md text-xs flex items-center gap-1 transition shadow-md shadow-emerald-900/30";
       }
 
       function resetGun() {
@@ -650,14 +726,12 @@
         const lineX = (state.lineXPercent / 100) * bitmap.width;
         
         viewerCtx.save();
-        // Line shadow glow
         viewerCtx.shadowColor = 'rgba(239, 68, 68, 0.8)';
         viewerCtx.shadowBlur = 8;
         
-        // Vertical Finish Line
         viewerCtx.strokeStyle = '#ef4444';
         viewerCtx.lineWidth = 2.5;
-        viewerCtx.setLineDash([8, 4]); // Dashed line effect
+        viewerCtx.setLineDash([8, 4]);
         viewerCtx.beginPath();
         viewerCtx.moveTo(lineX, 0);
         viewerCtx.lineTo(lineX, bitmap.height);
@@ -684,7 +758,6 @@
           return;
         }
 
-        // Add short post-trigger capture window (1.5s post trigger)
         updateStatusUI('CAPTURING', 'bg-amber-500', 'POST-BUFFER...');
         
         setTimeout(() => {
@@ -693,16 +766,12 @@
           stopDemoMode();
           updateStatusUI('REVIEW', 'bg-cyan-500', 'REVIEW MODE');
 
-          // Configure Frame Scrubber Slider
           dom.frameScrubSlider.min = 0;
           dom.frameScrubSlider.max = state.frameBuffer.length - 1;
           state.currentFrameIdx = state.frameBuffer.length - 1;
           dom.frameScrubSlider.value = state.currentFrameIdx;
 
-          // Generate Slit-Scan Strip Canvas
           generateSlitScanStrip();
-
-          // Display last captured frame
           showFrameAtIndex(state.currentFrameIdx);
         }, 1200);
       }
@@ -716,37 +785,29 @@
         const sliceW = state.slitWidthPx;
         const sampleHeight = state.frameBuffer[0].bitmap.height;
 
-        // Calculate total width of slit scan strip canvas
         const stripWidth = count * sliceW;
         dom.slitScanCanvas.width = stripWidth;
         dom.slitScanCanvas.height = sampleHeight;
 
-        // Clear canvas
         slitCtx.clearRect(0, 0, stripWidth, sampleHeight);
 
-        // Extract vertical line slice from each frame and stitch chronologically
         state.frameBuffer.forEach((frame, i) => {
           const bitmap = frame.bitmap;
           const sourceX = (state.lineXPercent / 100) * bitmap.width - (sliceW / 2);
 
-          // Calculate target horizontal position based on runner direction
           let targetX = i * sliceW;
           if (state.runnerDirection === 'R2L') {
             targetX = (count - 1 - i) * sliceW;
           }
 
-          // Draw vertical slice onto slit scan canvas
           slitCtx.drawImage(
             bitmap,
-            Math.max(0, sourceX), 0, sliceW, sampleHeight, // Source slice
-            targetX, 0, sliceW, sampleHeight              // Target strip position
+            Math.max(0, sourceX), 0, sliceW, sampleHeight,
+            targetX, 0, sliceW, sampleHeight
           );
         });
 
-        // Overlay Time Ticks along the bottom of the slit scan strip
         drawTimeTicksOnStrip(stripWidth, sampleHeight, count, sliceW);
-
-        // Update cursor position
         updateSlitCursorPosition();
       }
 
@@ -760,7 +821,6 @@
         slitCtx.fillStyle = '#f8fafc';
         slitCtx.font = '10px JetBrains Mono';
 
-        // Draw ticks every 10 frames
         const step = Math.max(1, Math.floor(totalFrames / 30));
         for (let i = 0; i < totalFrames; i += step) {
           let x = i * sliceW;
@@ -804,7 +864,6 @@
 
         dom.slitCursor.style.left = `${xPx}px`;
 
-        // Auto-scroll slit scan container to keep cursor in view
         const containerW = dom.slitContainer.clientWidth;
         const scrollLeft = dom.slitContainer.scrollLeft;
         if (xPx < scrollLeft || xPx > scrollLeft + containerW - 50) {
@@ -853,15 +912,11 @@
         };
 
         state.results.push(resultItem);
-
-        // Sort results by race time
         state.results.sort((a, b) => a.raceTimeMs - b.raceTimeMs);
-        // Re-assign places
         state.results.forEach((r, idx) => r.place = idx + 1);
 
         renderResultsTable();
 
-        // Reset inputs
         dom.bibInput.value = '';
         dom.nameInput.value = '';
       }
@@ -945,13 +1000,11 @@
         updateStatusUI('DEMO MODE', 'bg-emerald-400', 'DEMO SIMULATOR');
         dom.canvasPlaceholder.classList.add('hidden');
 
-        // Reset buffer & clock
         state.frameBuffer.forEach(f => f.bitmap && f.bitmap.close());
         state.frameBuffer = [];
         resetGun();
         startGun();
 
-        // 4 Runner models with different speeds & bib numbers
         state.demoRunners = [
           { bib: '101', name: 'A. Bolt', lane: 1, speed: 1.08, pos: -150, color: '#ef4444', headColor: '#fca5a5' },
           { bib: '204', name: 'Y. Blake', lane: 2, speed: 1.06, pos: -170, color: '#3b82f6', headColor: '#93c5fd' },
@@ -959,7 +1012,6 @@
           { bib: '405', name: 'A. Powell', lane: 4, speed: 1.03, pos: -210, color: '#f59e0b', headColor: '#fde68a' }
         ];
 
-        // Create Offscreen Demo Canvas (1280x720)
         const demoCanvas = document.createElement('canvas');
         demoCanvas.width = 1280;
         demoCanvas.height = 720;
@@ -974,11 +1026,9 @@
           const dt = (now - lastFrameTime) / 1000;
           lastFrameTime = now;
 
-          // Render Synthetic Track Scene
-          ctx.fillStyle = '#7f1d1d'; // Red tartan track
+          ctx.fillStyle = '#7f1d1d';
           ctx.fillRect(0, 0, 1280, 720);
 
-          // Track Lanes
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
           ctx.lineWidth = 4;
           for (let l = 1; l <= 4; l++) {
@@ -988,19 +1038,16 @@
             ctx.stroke();
           }
 
-          // Finish Line Ground Marking
           const lineX = (state.lineXPercent / 100) * 1280;
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(lineX - 8, 0, 16, 720);
 
-          // Render Animated Sprinters
           state.demoRunners.forEach(r => {
             r.pos += r.speed * 450 * dt;
 
             const y = r.lane * 150 - 75;
             const legOffset = Math.sin(r.pos * 0.08) * 20;
 
-            // Runner Legs
             ctx.strokeStyle = '#0f172a';
             ctx.lineWidth = 6;
             ctx.beginPath();
@@ -1010,29 +1057,25 @@
             ctx.lineTo(r.pos - legOffset, y + 55);
             ctx.stroke();
 
-            // Runner Torso (Jersey)
             ctx.fillStyle = r.color;
             ctx.beginPath();
             ctx.ellipse(r.pos, y, 18, 26, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Bib Number on chest
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 12px JetBrains Mono';
             ctx.textAlign = 'center';
             ctx.fillText(r.bib, r.pos, y + 4);
 
-            // Head
             ctx.fillStyle = r.headColor;
             ctx.beginPath();
             ctx.arc(r.pos + 4, y - 32, 14, 0, Math.PI * 2);
             ctx.fill();
           });
 
-          // Feed synthetic frame into rolling buffer
           processIncomingVideoFrame(demoCanvas);
 
-        }, 1000 / 60); // 60 FPS frame pump
+        }, 1000 / 60);
       }
 
       function stopDemoMode() {
@@ -1043,6 +1086,8 @@
       }
 
       // EVENT LISTENERS
+      dom.fullscreenBtn.addEventListener('click', toggleFullscreen);
+
       dom.toggleCamBtn.addEventListener('click', () => {
         if (state.mode === 'LIVE') stopCamera();
         else startCamera();
@@ -1063,7 +1108,6 @@
 
       dom.captureTriggerBtn.addEventListener('click', triggerCaptureFinish);
 
-      // Frame Scrubber Slider
       dom.frameScrubSlider.addEventListener('input', (e) => {
         showFrameAtIndex(parseInt(e.target.value, 10));
       });
@@ -1071,7 +1115,6 @@
       dom.prevFrameBtn.addEventListener('click', () => showFrameAtIndex(state.currentFrameIdx - 1));
       dom.nextFrameBtn.addEventListener('click', () => showFrameAtIndex(state.currentFrameIdx + 1));
 
-      // Replay Review Loop
       dom.playReviewBtn.addEventListener('click', () => {
         if (state.isReplaying) {
           clearInterval(state.replayInterval);
@@ -1088,7 +1131,6 @@
         }
       });
 
-      // Finish Line X Slider Change (Regenerates Slit-Scan!)
       dom.lineXSlider.addEventListener('input', (e) => {
         state.lineXPercent = parseFloat(e.target.value);
         if (state.mode === 'REVIEW') {
@@ -1097,7 +1139,6 @@
         }
       });
 
-      // Slit Width Change
       dom.slitWidthSelect.addEventListener('change', (e) => {
         state.slitWidthPx = parseInt(e.target.value, 10);
         if (state.mode === 'REVIEW') {
@@ -1105,7 +1146,6 @@
         }
       });
 
-      // Direction Toggle
       dom.directionToggleBtn.addEventListener('click', () => {
         if (state.runnerDirection === 'L2R') {
           state.runnerDirection = 'R2L';
@@ -1119,7 +1159,6 @@
         }
       });
 
-      // Results Logging Buttons
       dom.logFinisherBtn.addEventListener('click', logFinisher);
       dom.exportCsvBtn.addEventListener('click', exportCSV);
       dom.exportStripBtn.addEventListener('click', exportStripPNG);
@@ -1130,9 +1169,7 @@
         }
       });
 
-      // KEYBOARD SHORTCUTS
       window.addEventListener('keydown', (e) => {
-        // Prevent shortcuts if typing in text inputs
         if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
           if (e.key === 'Enter') {
             logFinisher();
@@ -1159,6 +1196,7 @@
 
       // INIT APP
       populateCameraDevices();
+      syncFullscreenButtonUI();
 
     })();
   </script>
