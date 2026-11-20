@@ -50,7 +50,7 @@
       font-variant-numeric: tabular-nums;
     }
     .scan-cursor {
-      box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.9);
     }
 
     /* Give camera/frame viewer generous vertical room in mobile landscape */
@@ -61,7 +61,7 @@
         max-height: 64svh !important;
       }
       .slit-strip-box {
-        height: 96px !important;
+        height: 115px !important;
       }
     }
   </style>
@@ -127,11 +127,9 @@
         aria-label="Toggle Fullscreen"
         class="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-brand-500/60 text-slate-200 px-2.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition shrink-0"
       >
-        <!-- Expand Icon -->
         <svg id="fullscreenExpandIcon" class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
         </svg>
-        <!-- Compress / Exit Icon -->
         <svg id="fullscreenExitIcon" class="w-4 h-4 text-amber-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M15 9h4.5M15 9V4.5M15 9l5.25-5.25M9 15H4.5M9 15v4.5M9 15l-5.25 5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"></path>
         </svg>
@@ -192,9 +190,8 @@
     <!-- LEFT / TOP COLUMN: 2D FRAME VIEWER & CONTROLS (8 COLS ON DESKTOP) -->
     <div class="lg:col-span-8 flex flex-col space-y-2.5 sm:space-y-3">
       
-      <!-- Video / Canvas Screen Container (sized generously for mobile landscape too) -->
+      <!-- Video / Canvas Screen Container -->
       <div class="viewer-stage relative w-full bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex items-center justify-center min-h-[260px] sm:min-h-[340px] h-[48svh] sm:h-[52vh] max-h-[540px]">
-        <!-- Canvas for displaying current live frame or buffered frame -->
         <canvas id="mainViewerCanvas" class="w-full h-full object-contain cursor-crosshair"></canvas>
 
         <!-- Dynamic Overlay Details (Top Left) -->
@@ -308,7 +305,6 @@
             </tr>
           </thead>
           <tbody id="resultsTableBody" class="divide-y divide-slate-800/50 text-slate-300">
-            <!-- Dynamic Log Rows -->
             <tr id="emptyResultsRow">
               <td colspan="5" class="p-6 text-center text-slate-600 text-xs font-sans">
                 No finishers logged yet.<br>Scrub to runner torso crossing finish line & press <b class="text-slate-400">Log Finisher</b>.
@@ -343,16 +339,16 @@
           <span class="w-2 h-2 rounded-full bg-brand-500"></span>
           Slit-Scan Photo-Finish Timeline Strip
         </h3>
-        <span class="text-[11px] text-slate-500 font-mono hidden md:inline">(Stitched vertical slices down finish line over time)</span>
+        <span id="stripSyncReadout" class="text-[11px] text-amber-400 font-mono"></span>
       </div>
       <div class="text-[11px] text-slate-400 font-mono">
-        Click or drag anywhere on the strip below to jump to frame
+        Click or drag anywhere on the strip below to scrub frames
       </div>
     </div>
 
     <!-- Slit Scan Canvas Container with Horizontal Scroll -->
-    <div id="slitContainer" class="slit-strip-box relative bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto overflow-y-hidden shadow-inner h-[120px] sm:h-[140px] flex items-center cursor-pointer">
-      <canvas id="slitScanCanvas" class="h-full block"></canvas>
+    <div id="slitContainer" class="slit-strip-box relative bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto overflow-y-hidden shadow-inner h-[145px] sm:h-[170px] flex items-center cursor-ew-resize">
+      <canvas id="slitScanCanvas" class="block shrink-0"></canvas>
       
       <!-- Interactive Red Frame Cursor Marker -->
       <div id="slitCursor" class="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none scan-cursor hidden z-10">
@@ -387,17 +383,18 @@
 
         // Rolling Ring Buffer
         bufferSec: 10,
-        frameBuffer: [], // Array<{ bitmap: ImageBitmap, raceTimeMs: number, perfTimeMs: number, index: number }>
-        maxBufferFrames: 600, // calculated based on 60fps
+        frameBuffer: [],
         isCapturingPost: false,
 
         // Review & Slit Scan Settings
         lineXPercent: 50,
         slitWidthPx: 2,
+        stripDisplayScaleX: 1, // Visual horizontal multiplier per slice in CSS px
         runnerDirection: 'L2R', // 'L2R' or 'R2L'
         currentFrameIdx: 0,
         isReplaying: false,
         replayInterval: null,
+        isScrubbingStrip: false,
 
         // Telemetry & FPS Counter
         frameCount: 0,
@@ -467,13 +464,13 @@
         slitScanCanvas: document.getElementById('slitScanCanvas'),
         slitCursor: document.getElementById('slitCursor'),
         slitPlaceholder: document.getElementById('slitPlaceholder'),
+        stripSyncReadout: document.getElementById('stripSyncReadout'),
         
         offscreenCanvas: document.getElementById('offscreenCanvas')
       };
 
       const viewerCtx = dom.mainViewerCanvas.getContext('2d');
       const slitCtx = dom.slitScanCanvas.getContext('2d');
-      const offscreenCtx = dom.offscreenCanvas.getContext('2d');
 
       // FULLSCREEN TOGGLE LOGIC
       function getFullscreenElement() {
@@ -580,7 +577,6 @@
           dom.canvasPlaceholder.classList.add('hidden');
           dom.camBtnText.textContent = 'Stop Cam';
 
-          // Track FPS & start processing loop
           state.frameCount = 0;
           state.lastFpsUpdate = performance.now();
           
@@ -656,7 +652,6 @@
         const perfNow = performance.now();
         const raceTimeMs = state.gunRunning ? (perfNow - state.gunStartTime) : 0;
 
-        // Calculate FPS
         state.frameCount++;
         if (perfNow - state.lastFpsUpdate >= 1000) {
           state.calculatedFps = (state.frameCount * 1000) / (perfNow - state.lastFpsUpdate);
@@ -665,14 +660,10 @@
           state.lastFpsUpdate = perfNow;
         }
 
-        // Capture frame as lightweight ImageBitmap for ring buffer
         try {
           const bitmap = await createImageBitmap(sourceElement);
-
-          // Update resolution display
           dom.resDisplay.textContent = `${bitmap.width}x${bitmap.height}`;
 
-          // Add to rolling buffer
           state.frameBuffer.push({
             bitmap,
             raceTimeMs,
@@ -680,16 +671,14 @@
             index: state.frameBuffer.length
           });
 
-          // Enforce rolling buffer time limit (prune old frames)
           const targetBufferFrames = Math.ceil((state.bufferSec || 10) * (state.calculatedFps || 60));
           while (state.frameBuffer.length > targetBufferFrames) {
             const oldest = state.frameBuffer.shift();
-            if (oldest && oldest.bitmap) oldest.bitmap.close(); // Clean up WebGL/Bitmap memory!
+            if (oldest && oldest.bitmap) oldest.bitmap.close();
           }
 
           dom.bufCountDisplay.textContent = `${state.frameBuffer.length} frames`;
 
-          // If live mode, paint current frame to main 2D viewer canvas
           if (state.mode === 'LIVE') {
             drawViewerFrame(bitmap, raceTimeMs, state.frameBuffer.length - 1, state.frameBuffer.length);
           }
@@ -719,10 +708,8 @@
         dom.mainViewerCanvas.width = bitmap.width;
         dom.mainViewerCanvas.height = bitmap.height;
 
-        // 1. Draw camera/simulated image frame
         viewerCtx.drawImage(bitmap, 0, 0);
 
-        // 2. Draw Red Virtual Finish Line Overlay
         const lineX = (state.lineXPercent / 100) * bitmap.width;
         
         viewerCtx.save();
@@ -738,14 +725,12 @@
         viewerCtx.stroke();
         viewerCtx.restore();
 
-        // Top & Bottom finish line target handles
         viewerCtx.fillStyle = '#ef4444';
         viewerCtx.beginPath();
         viewerCtx.arc(lineX, 12, 6, 0, Math.PI * 2);
         viewerCtx.arc(lineX, bitmap.height - 12, 6, 0, Math.PI * 2);
         viewerCtx.fill();
 
-        // 3. Update Text Tags
         dom.frameNumTag.textContent = `${frameIdx + 1} / ${totalFrames}`;
         dom.frameTimeTag.textContent = formatRaceTime(raceTimeMs);
         dom.lineXTag.textContent = `${state.lineXPercent.toFixed(1)}%`;
@@ -776,118 +761,203 @@
         }, 1200);
       }
 
-      // GENERATE SYNCHRONIZED SLIT-SCAN PHOTO-FINISH STRIP
+      // COMPUTE STRIP DISPLAY GEOMETRY IN CSS PIXELS
+      function getStripLayoutMetrics(totalFrames) {
+        const containerHeight = Math.max(100, dom.slitContainer.clientHeight || 160);
+        // Ensure each frame occupies at least ~2.5px visually so scrubbing & labels have breathing room
+        const pxPerFrame = Math.max(2.5, state.slitWidthPx * 1.5);
+        const cssWidth = Math.max(dom.slitContainer.clientWidth || 300, Math.ceil(totalFrames * pxPerFrame));
+        return {
+          cssWidth,
+          cssHeight: containerHeight,
+          pxPerFrame
+        };
+      }
+
+      // GENERATE SYNCHRONIZED SLIT-SCAN PHOTO-FINISH STRIP AT ACTUAL DISPLAY SCALE
       function generateSlitScanStrip() {
         if (state.frameBuffer.length === 0) return;
 
         dom.slitPlaceholder.classList.add('hidden');
         const count = state.frameBuffer.length;
-        const sliceW = state.slitWidthPx;
-        const sampleHeight = state.frameBuffer[0].bitmap.height;
+        const { cssWidth, cssHeight, pxPerFrame } = getStripLayoutMetrics(count);
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-        const stripWidth = count * sliceW;
-        dom.slitScanCanvas.width = stripWidth;
-        dom.slitScanCanvas.height = sampleHeight;
+        state.stripDisplayScaleX = pxPerFrame;
 
-        slitCtx.clearRect(0, 0, stripWidth, sampleHeight);
+        // Set explicit CSS pixel dimensions so there is zero ambiguous stretching
+        dom.slitScanCanvas.style.width = `${cssWidth}px`;
+        dom.slitScanCanvas.style.height = `${cssHeight}px`;
+
+        // Backing canvas resolution at DPR for crisp text & slices
+        dom.slitScanCanvas.width = Math.round(cssWidth * dpr);
+        dom.slitScanCanvas.height = Math.round(cssHeight * dpr);
+
+        slitCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        slitCtx.clearRect(0, 0, cssWidth, cssHeight);
+
+        const tickBandHeight = 26;
+        const imageBandHeight = Math.max(40, cssHeight - tickBandHeight);
 
         state.frameBuffer.forEach((frame, i) => {
           const bitmap = frame.bitmap;
-          const sourceX = (state.lineXPercent / 100) * bitmap.width - (sliceW / 2);
+          const sliceSourceW = Math.max(1, state.slitWidthPx);
+          const rawSourceX = (state.lineXPercent / 100) * bitmap.width - (sliceSourceW / 2);
+          const clampedSourceX = Math.max(0, Math.min(bitmap.width - sliceSourceW, rawSourceX));
 
-          let targetX = i * sliceW;
+          let targetX = i * pxPerFrame;
           if (state.runnerDirection === 'R2L') {
-            targetX = (count - 1 - i) * sliceW;
+            targetX = (count - 1 - i) * pxPerFrame;
           }
 
           slitCtx.drawImage(
             bitmap,
-            Math.max(0, sourceX), 0, sliceW, sampleHeight,
-            targetX, 0, sliceW, sampleHeight
+            clampedSourceX,
+            0,
+            sliceSourceW,
+            bitmap.height,
+            targetX,
+            0,
+            Math.ceil(pxPerFrame),
+            imageBandHeight
           );
         });
 
-        drawTimeTicksOnStrip(stripWidth, sampleHeight, count, sliceW);
+        drawTimeTicksOnStrip(cssWidth, cssHeight, imageBandHeight, tickBandHeight, count, pxPerFrame);
         updateSlitCursorPosition();
       }
 
-      // DRAW TIME TICKS & STAMPS ON SLIT-SCAN STRIP
-      function drawTimeTicksOnStrip(width, height, totalFrames, sliceW) {
+      // DRAW LEGIBLE TIME TICKS & STAMPS ALONG BOTTOM OF SLIT-SCAN STRIP
+      function drawTimeTicksOnStrip(cssWidth, cssHeight, imageBandHeight, tickBandHeight, totalFrames, pxPerFrame) {
         slitCtx.save();
-        slitCtx.fillStyle = 'rgba(15, 23, 42, 0.7)';
-        slitCtx.fillRect(0, height - 24, width, 24);
 
-        slitCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-        slitCtx.fillStyle = '#f8fafc';
-        slitCtx.font = '10px JetBrains Mono';
+        // Dark background bar for timestamps
+        slitCtx.fillStyle = '#020617';
+        slitCtx.fillRect(0, imageBandHeight, cssWidth, tickBandHeight);
 
-        const step = Math.max(1, Math.floor(totalFrames / 30));
-        for (let i = 0; i < totalFrames; i += step) {
-          let x = i * sliceW;
+        // Top separator border
+        slitCtx.strokeStyle = '#334155';
+        slitCtx.lineWidth = 1;
+        slitCtx.beginPath();
+        slitCtx.moveTo(0, imageBandHeight + 0.5);
+        slitCtx.lineTo(cssWidth, imageBandHeight + 0.5);
+        slitCtx.stroke();
+
+        // Legible 11px monospace font at true display size
+        slitCtx.font = 'bold 11px "JetBrains Mono", monospace';
+        slitCtx.textBaseline = 'middle';
+
+        const minLabelSpacingPx = 76;
+        const frameStep = Math.max(1, Math.ceil(minLabelSpacingPx / pxPerFrame));
+
+        for (let i = 0; i < totalFrames; i += frameStep) {
+          let x = i * pxPerFrame;
           if (state.runnerDirection === 'R2L') {
-            x = (totalFrames - 1 - i) * sliceW;
+            x = (totalFrames - 1 - i) * pxPerFrame;
           }
 
+          // Vertical tick line across image & timestamp bar
+          slitCtx.strokeStyle = 'rgba(248, 250, 252, 0.35)';
           slitCtx.beginPath();
-          slitCtx.moveTo(x, height - 24);
-          slitCtx.lineTo(x, height);
+          slitCtx.moveTo(x, imageBandHeight - 8);
+          slitCtx.lineTo(x, cssHeight);
           slitCtx.stroke();
 
           const timeStr = formatRaceTime(state.frameBuffer[i].raceTimeMs);
-          slitCtx.fillText(timeStr, x + 3, height - 8);
+          const labelX = Math.min(cssWidth - 64, Math.max(2, x + 4));
+          const labelY = imageBandHeight + (tickBandHeight / 2);
+
+          slitCtx.fillStyle = '#f8fafc';
+          slitCtx.fillText(timeStr, labelX, labelY);
         }
+
         slitCtx.restore();
       }
 
-      // SHOW SPECIFIC FRAME AT INDEX & SYNC CURSOR
+      // SHOW SPECIFIC FRAME AT INDEX & SYNC VIDEO + CURSOR
       function showFrameAtIndex(index) {
-        if (index < 0 || index >= state.frameBuffer.length) return;
-        state.currentFrameIdx = index;
-        dom.frameScrubSlider.value = index;
+        if (state.frameBuffer.length === 0) return;
+        const clamped = Math.max(0, Math.min(state.frameBuffer.length - 1, index));
+        state.currentFrameIdx = clamped;
+        dom.frameScrubSlider.value = clamped;
 
-        const frame = state.frameBuffer[index];
-        drawViewerFrame(frame.bitmap, frame.raceTimeMs, index, state.frameBuffer.length);
+        const frame = state.frameBuffer[clamped];
+        drawViewerFrame(frame.bitmap, frame.raceTimeMs, clamped, state.frameBuffer.length);
         updateSlitCursorPosition();
       }
 
-      // UPDATE SLIT SCAN RED CURSOR LINE POSITION
+      // UPDATE SLIT SCAN RED CURSOR LINE & SYNC HORIZONTAL SCROLL
       function updateSlitCursorPosition() {
         if (state.frameBuffer.length === 0) return;
         dom.slitCursor.classList.remove('hidden');
 
         const totalFrames = state.frameBuffer.length;
-        const sliceW = state.slitWidthPx;
-        let xPx = state.currentFrameIdx * sliceW;
+        const pxPerFrame = state.stripDisplayScaleX || Math.max(2.5, state.slitWidthPx * 1.5);
+
+        let xPx = state.currentFrameIdx * pxPerFrame;
         if (state.runnerDirection === 'R2L') {
-          xPx = (totalFrames - 1 - state.currentFrameIdx) * sliceW;
+          xPx = (totalFrames - 1 - state.currentFrameIdx) * pxPerFrame;
         }
 
         dom.slitCursor.style.left = `${xPx}px`;
 
-        const containerW = dom.slitContainer.clientWidth;
-        const scrollLeft = dom.slitContainer.scrollLeft;
-        if (xPx < scrollLeft || xPx > scrollLeft + containerW - 50) {
-          dom.slitContainer.scrollLeft = xPx - containerW / 2;
+        const currentFrame = state.frameBuffer[state.currentFrameIdx];
+        if (currentFrame) {
+          dom.stripSyncReadout.textContent = `• Cursor: Frame ${state.currentFrameIdx + 1}/${totalFrames} (${formatRaceTime(currentFrame.raceTimeMs)})`;
+        }
+
+        // Keep cursor centered/visible inside scroll container unless user is actively dragging
+        if (!state.isScrubbingStrip) {
+          const containerW = dom.slitContainer.clientWidth;
+          const scrollLeft = dom.slitContainer.scrollLeft;
+          if (xPx < scrollLeft + 24 || xPx > scrollLeft + containerW - 24) {
+            dom.slitContainer.scrollLeft = Math.max(0, xPx - containerW / 2);
+          }
         }
       }
 
-      // SLIT SCAN STRIP CLICK TO SCRUB
-      dom.slitContainer.addEventListener('click', (e) => {
+      // MAP CLIENT X ON STRIP TO FRAME INDEX (ACCOUNTS FOR SCALING & DIRECTION)
+      function scrubToStripClientX(clientX) {
         if (state.frameBuffer.length === 0) return;
         const rect = dom.slitScanCanvas.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
+        if (!rect.width) return;
+
+        const clampedClientX = Math.max(rect.left, Math.min(rect.right, clientX));
+        const relativeRatio = (clampedClientX - rect.left) / rect.width;
 
         const totalFrames = state.frameBuffer.length;
-        const sliceW = state.slitWidthPx;
-
-        let frameIdx = Math.floor(clickX / sliceW);
+        let frameIdx = Math.round(relativeRatio * (totalFrames - 1));
         if (state.runnerDirection === 'R2L') {
-          frameIdx = totalFrames - 1 - frameIdx;
+          frameIdx = (totalFrames - 1) - frameIdx;
         }
 
-        frameIdx = Math.max(0, Math.min(totalFrames - 1, frameIdx));
         showFrameAtIndex(frameIdx);
+      }
+
+      // CLICK & DRAG SCRUBBING ON SLIT-SCAN STRIP
+      dom.slitContainer.addEventListener('pointerdown', (e) => {
+        if (state.frameBuffer.length === 0) return;
+        state.isScrubbingStrip = true;
+        dom.slitContainer.setPointerCapture(e.pointerId);
+        scrubToStripClientX(e.clientX);
       });
+
+      dom.slitContainer.addEventListener('pointermove', (e) => {
+        if (!state.isScrubbingStrip) return;
+        scrubToStripClientX(e.clientX);
+      });
+
+      function endStripScrub(e) {
+        if (!state.isScrubbingStrip) return;
+        state.isScrubbingStrip = false;
+        if (e && e.pointerId !== undefined && dom.slitContainer.hasPointerCapture(e.pointerId)) {
+          dom.slitContainer.releasePointerCapture(e.pointerId);
+        }
+        updateSlitCursorPosition();
+      }
+
+      dom.slitContainer.addEventListener('pointerup', endStripScrub);
+      dom.slitContainer.addEventListener('pointercancel', endStripScrub);
 
       // FINISHER RESULTS LOGGING
       function logFinisher() {
@@ -1136,6 +1206,8 @@
         if (state.mode === 'REVIEW') {
           generateSlitScanStrip();
           showFrameAtIndex(state.currentFrameIdx);
+        } else {
+          dom.lineXTag.textContent = `${state.lineXPercent.toFixed(1)}%`;
         }
       });
 
@@ -1155,6 +1227,12 @@
           dom.directionToggleBtn.textContent = 'Left ➔ Right';
         }
         if (state.mode === 'REVIEW') {
+          generateSlitScanStrip();
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        if (state.mode === 'REVIEW' && state.frameBuffer.length > 0) {
           generateSlitScanStrip();
         }
       });
